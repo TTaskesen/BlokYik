@@ -15,6 +15,10 @@ run/main_scene="res://scenes/AnaMenu.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
 
+[autoload]
+
+SesYonetici="*res://scripts/ses_yoneticisi.gd"
+
 [display]
 
 window/size/viewport_width=720
@@ -35,9 +39,3 @@ window/handheld/orientation=1
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="vulkan"
-
-[autoload]
-
-Ayarlar="*res://scripts/ayar_yoneticisi.gd"
-SesYonetici="*res://scripts/ses_yoneticisi.gd"
-SkorYonetici="*res://scripts/skor_yoneticisi.gd"
