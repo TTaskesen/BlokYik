@@ -4,19 +4,15 @@ const BLOK_BOYUTU := 32
 const REFERANS_TAHTA_GENISLIGI := 10
 const REFERANS_TAHTA_YUKSEKLIGI := 20
 const REFERANS_TAHTA_KONUMU := Vector2(190, 100)
-const AYAR_YONETICISI = preload("res://scripts/ayar_yoneticisi.gd")
-const SES_YONETICISI = preload("res://scripts/ses_yoneticisi.gd")
-const LEVEL_YONETICISI = preload("res://scripts/level_yoneticisi.gd")
-const KAYIT_YONETICISI = preload("res://scripts/oyun_kayit_yoneticisi.gd")
 
 var tahta := OyunTahtasi.new()
 var parca_uretici := ParcaUretici.new()
 var skor_yoneticisi := SkorYoneticisi.new()
 var giris_yoneticisi := GirisYoneticisi.new()
-var ayar_yoneticisi := AYAR_YONETICISI.new()
-var level_yoneticisi := LEVEL_YONETICISI.new()
+var ayar_yoneticisi := AyarYoneticisi.new()
+var level_yoneticisi := LevelYoneticisi.new()
 var ses_yoneticisi
-var kayit_yoneticisi = KAYIT_YONETICISI.new()
+var kayit_yoneticisi = OyunKayitYoneticisi.new()
 var _son_muzik_seviyesi := -1.0
 var aktif_parca: TetrisParcasi
 var sonraki_parca: TetrisParcasi
@@ -51,7 +47,7 @@ func focusu_birak() -> void:
 		vp.gui_release_focus()
 
 func _ready() -> void:
-	ses_yoneticisi = SES_YONETICISI.new()
+	ses_yoneticisi = SesYoneticisi.new()
 	ses_yoneticisi.ses_acik = ayar_yoneticisi.ses_acik
 	ses_yoneticisi.muzik_acik = ayar_yoneticisi.muzik_acik
 	add_child(ses_yoneticisi)

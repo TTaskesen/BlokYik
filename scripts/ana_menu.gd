@@ -1,8 +1,6 @@
 extends TemelSahne
 
-const AYAR_YONETICISI = preload("res://scripts/ayar_yoneticisi.gd")
-
-var ayar_yoneticisi := AYAR_YONETICISI.new()
+var ayar_yoneticisi := AyarYoneticisi.new()
 
 func _ready() -> void:
 	pass

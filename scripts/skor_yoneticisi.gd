@@ -59,6 +59,8 @@ func yuksek_skoru_oku() -> int:
 
 func yuksek_skoru_kaydet() -> void:
 	yuksek_skor = max(yuksek_skor, skor)
+	# user:// dizininin varlığını garanti et
+	DirAccess.make_dir_recursive_absolute("user://")
 	var dosya := FileAccess.open(KAYIT_YOLU, FileAccess.WRITE)
 	if dosya != null:
 		dosya.store_string(str(yuksek_skor))

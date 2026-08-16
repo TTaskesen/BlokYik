@@ -1,8 +1,6 @@
 extends TemelSahne
 
-const AYAR_YONETICISI = preload("res://scripts/ayar_yoneticisi.gd")
-
-@onready var ayar_yoneticisi = AYAR_YONETICISI.new()
+@onready var ayar_yoneticisi = AyarYoneticisi.new()
 @onready var ses_acik = $Panel/SesAcik
 @onready var muzik_acik = $Panel/MuzikAcik
 @onready var muzik_seviye = $Panel/MuzikSeviye
