@@ -18,9 +18,15 @@ func _ready() -> void:
 
 func _on_ses_toggled(deger: bool) -> void:
 	ayar_yoneticisi.ses_ayarini_kaydet(deger)
+	SesYonetici.ayar_yoneticisi.ses_acik = deger
+	SesYonetici.ayarları_uygula()
 
 func _on_muzik_toggled(deger: bool) -> void:
 	ayar_yoneticisi.muzik_ayarini_kaydet(deger)
+	SesYonetici.ayar_yoneticisi.muzik_acik = deger
+	SesYonetici.ayarları_uygula()
 
 func _on_muzik_seviye_changed(deger: float) -> void:
 	ayar_yoneticisi.muzik_seviyesi_kaydet(deger)
+	SesYonetici.ayar_yoneticisi.muzik_seviyesi = clampf(deger, 0.0, 1.0)
+	SesYonetici.ayarları_uygula()

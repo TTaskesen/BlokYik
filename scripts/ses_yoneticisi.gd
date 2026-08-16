@@ -15,6 +15,7 @@ const MUZIK_TEMALARI := {
 	3: "res://audio/muzik_3.wav",
 }
 
+var ayar_yoneticisi := AyarYoneticisi.new()
 var ses_acik := true
 var muzik_acik := true
 var oynatici: AudioStreamPlayer
@@ -23,6 +24,7 @@ var yuklu_sesler := {}
 var muzik_stream
 
 func _ready() -> void:
+	add_to_group("ses_yoneticisi")
 	oynatici = AudioStreamPlayer.new()
 	add_child(oynatici)
 	muzik_oynatici = AudioStreamPlayer.new()
@@ -31,9 +33,25 @@ func _ready() -> void:
 	muzik_oynatici.finished.connect(func(): if muzik_acik and ses_acik: muzik_oynatici.play())
 	sesleri_yukle()
 	muzik_yukle()
-	seviye_guncelle()
-	if muzik_acik and ses_acik:
-		muzik_oynatici.play()
+	ayarları_uygula()
+
+func ayarları_uygula() -> void:
+	ses_acik = ayar_yoneticisi.ses_acik
+	muzik_acik = ayar_yoneticisi.muzik_acik
+	if muzik_oynatici:
+		muzik_oynatici.volume_db = linear_to_db(maxf(ayar_yoneticisi.muzik_seviyesi, 0.001))
+	if not ses_acik:
+		sesleri_durdur()
+	elif muzik_acik:
+		muzik_baslat()
+	else:
+		muzik_durdur()
+
+func sesleri_durdur() -> void:
+	if oynatici:
+		oynatici.stop()
+	if muzik_oynatici:
+		muzik_oynatici.stop()
 
 func sesleri_yukle() -> void:
 	for efekt_adi in SES_YOLLARI:
@@ -53,6 +71,7 @@ func tema_degistir(tema_no: int) -> void:
 	var yeni_stream = load(yol)
 	var poz = muzik_oynatici.get_playback_position() if muzik_oynatici.playing else 0.0
 	muzik_oynatici.stream = yeni_stream
+	muzik_stream = yeni_stream
 	if muzik_acik and ses_acik:
 		muzik_oynatici.play()
 		muzik_oynatici.seek(poz)
@@ -72,8 +91,26 @@ func efekt_cal(efekt_adi: String) -> void:
 		"oyun_bitti":
 			frekans = 110.0
 			sure = 0.35
-	oynatici.stream = yuklu_sesler.get(efekt_adi, ses_olustur(frekans, sure))
+	# Dictionary.get() çağrısının varsayılan parametresi önceden değerlendirildiği
+	# için, kayıtlı ses olsa bile gereksiz bir AudioStreamWAV oluşturuluyordu.
+	var ses = yuklu_sesler.get(efekt_adi)
+	if ses == null:
+		ses = ses_olustur(frekans, sure)
+	oynatici.stream = ses
 	oynatici.play()
+
+func _exit_tree() -> void:
+	# Autoload kapanırken oynatıcılar ses akışlarını ve playback nesnelerini
+	# referanslamaya devam etmesin.
+	if oynatici:
+		oynatici.stop()
+		oynatici.stream = null
+	if muzik_oynatici:
+		muzik_oynatici.stop()
+		muzik_oynatici.stream_paused = false
+		muzik_oynatici.stream = null
+	yuklu_sesler.clear()
+	muzik_stream = null
 
 func seviye_guncelle() -> void:
 	if muzik_oynatici:
@@ -83,7 +120,8 @@ func seviye_guncelle() -> void:
 func muzik_baslat() -> void:
 	if not muzik_acik or not ses_acik:
 		return
-	if muzik_oynatici and muzik_stream:
+	if muzik_oynatici and muzik_oynatici.stream:
+		muzik_oynatici.stream_paused = false
 		muzik_oynatici.play()
 
 func muzik_durdur() -> void:

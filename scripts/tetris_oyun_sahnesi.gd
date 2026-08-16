@@ -4,16 +4,17 @@ const BLOK_BOYUTU := 32
 const REFERANS_TAHTA_GENISLIGI := 10
 const REFERANS_TAHTA_YUKSEKLIGI := 20
 const REFERANS_TAHTA_KONUMU := Vector2(190, 100)
+const REFERANS_EKRAN_BOYUTU := Vector2(720, 960)
 
 var tahta := OyunTahtasi.new()
 var parca_uretici := ParcaUretici.new()
 var skor_yoneticisi := SkorYoneticisi.new()
 var giris_yoneticisi := GirisYoneticisi.new()
-var ayar_yoneticisi := AyarYoneticisi.new()
 var level_yoneticisi := LevelYoneticisi.new()
-var ses_yoneticisi
-var kayit_yoneticisi = OyunKayitYoneticisi.new()
-var _son_muzik_seviyesi := -1.0
+var ses_yoneticisi: SesYoneticisi
+var ayar_yoneticisi: AyarYoneticisi
+@export var kayit_yolu := OyunKayitYoneticisi.KAYIT_YOLU
+var kayit_yoneticisi: OyunKayitYoneticisi
 var aktif_parca: TetrisParcasi
 var sonraki_parca: TetrisParcasi
 var dusme_suresi := 0.0
@@ -24,6 +25,9 @@ var dokunma_baslangici := Vector2.ZERO
 var satir_silme_animasyonu_aktif := false
 var yanan_satirlar: Array[int] = []
 var yanma_baslangic_zamani := 0
+var _oyun_oturum_id := 0
+var _yerlesim_olcegi := 1.0
+var _yerlesim_ofseti := Vector2.ZERO
 
 @onready var skor_etiketi: Label = $Arayuz/Skor
 @onready var yuksek_skor_etiketi: Label = $Arayuz/YuksekSkor
@@ -47,14 +51,13 @@ func focusu_birak() -> void:
 		vp.gui_release_focus()
 
 func _ready() -> void:
-	ses_yoneticisi = SesYoneticisi.new()
-	ses_yoneticisi.ses_acik = ayar_yoneticisi.ses_acik
-	ses_yoneticisi.muzik_acik = ayar_yoneticisi.muzik_acik
-	add_child(ses_yoneticisi)
-	# müzik seviyesini ayarla
-	if ses_yoneticisi.muzik_oynatici:
-		ses_yoneticisi.muzik_oynatici.volume_db = linear_to_db(ayar_yoneticisi.muzik_seviyesi)
-	level_ayarini_uygula()
+	ses_yoneticisi = get_node("/root/SesYonetici") as SesYoneticisi
+	ayar_yoneticisi = ses_yoneticisi.ayar_yoneticisi
+	kayit_yoneticisi = OyunKayitYoneticisi.new(kayit_yolu)
+	var kayitli_oyun_yuklenecek := bool(get_tree().get_meta("kayitli_oyun_yukle", false))
+	get_tree().set_meta("kayitli_oyun_yukle", false)
+	if not kayitli_oyun_yuklenecek or not oyunu_yukle():
+		yeni_oyunu_baslat()
 	ses_toggle_butonu.text = "🔊" if ses_yoneticisi.ses_acik else "🔇"
 	$Arayuz/Sol.pressed.connect(func(): komutu_uygula("sol"); focusu_birak())
 	$Arayuz/Sag.pressed.connect(func(): komutu_uygula("sag"); focusu_birak())
@@ -74,20 +77,12 @@ func _ready() -> void:
 	$Arayuz/DuraklatMenu/DuraklatIcerik/AnaMenuBtn.pressed.connect(func(): menuye_don(); focusu_birak())
 	$Arayuz/SesToggle.pressed.connect(func(): ses_toggle(); focusu_birak())
 	focusu_birak()
+	resized.connect(yerlesimi_guncelle)
+	yerlesimi_guncelle()
 	arayuzu_guncelle()
 	queue_redraw()
 
 func _process(delta: float) -> void:
-	# Canlı ayar senkronizasyonu
-	if ses_yoneticisi and ayar_yoneticisi:
-		if _son_muzik_seviyesi != ayar_yoneticisi.muzik_seviyesi:
-			_son_muzik_seviyesi = ayar_yoneticisi.muzik_seviyesi
-			ses_yoneticisi.muzik_oynatici.volume_db = linear_to_db(ayar_yoneticisi.muzik_seviyesi)
-		if ses_yoneticisi.ses_acik != ayar_yoneticisi.ses_acik:
-			ses_yoneticisi.ses_acik = ayar_yoneticisi.ses_acik
-		if ses_yoneticisi.muzik_acik != ayar_yoneticisi.muzik_acik:
-			ses_yoneticisi.muzik_acik = ayar_yoneticisi.muzik_acik
-	
 	if not oyun_aktif or oyun_duraklatildi:
 		return
 	if satir_silme_animasyonu_aktif:
@@ -177,9 +172,8 @@ func duraklatmayi_degistir() -> void:
 
 func ses_toggle() -> void:
 	if ses_yoneticisi:
-		ses_yoneticisi.ses_acik = not ses_yoneticisi.ses_acik
-		ayar_yoneticisi.ses_acik = ses_yoneticisi.ses_acik
-		ayar_yoneticisi.ses_ayarini_kaydet(ses_yoneticisi.ses_acik)
+		ayar_yoneticisi.ses_ayarini_kaydet(not ses_yoneticisi.ses_acik)
+		ses_yoneticisi.ayarları_uygula()
 		ses_toggle_butonu.text = "🔊" if ses_yoneticisi.ses_acik else "🔇"
 
 func parcayi_dusur() -> void:
@@ -198,11 +192,14 @@ func parcayi_dusur() -> void:
 	queue_redraw()
 
 func satir_silme_animasyonunu_oynat(dolu_satirlar: Array[int]) -> void:
+	var animasyon_oturum_id := _oyun_oturum_id
 	satir_silme_animasyonu_aktif = true
 	yanan_satirlar = dolu_satirlar
 	yanma_baslangic_zamani = Time.get_ticks_msec()
 	queue_redraw()
 	await get_tree().create_timer(0.35).timeout
+	if animasyon_oturum_id != _oyun_oturum_id or not is_inside_tree():
+		return
 	var silinen_satir := tahta.satirlari_sil(yanan_satirlar)
 	satir_silme_animasyonu_aktif = false
 	yanan_satirlar.clear()
@@ -227,6 +224,8 @@ func kilitlenmis_parcayi_isle(silinen_satir: int) -> void:
 	else:
 		aktif_parca = sonraki_parca
 		sonraki_parca = parca_uretici.yeni_parca()
+		# Satır animasyonu bittikten ve yeni parça oluşturulduktan sonra durum tutarlıdır.
+		oyunu_kaydet()
 
 func arayuzu_guncelle() -> void:
 	skor_etiketi.text = "Skor: %d" % skor_yoneticisi.skor
@@ -242,6 +241,13 @@ func arayuzu_guncelle() -> void:
 		durum_etiketi.text = "Oyun bitti — yeniden başlatabilir veya menüye dönebilirsin"
 
 func yeniden_baslat() -> void:
+	yeni_oyunu_baslat()
+
+func yeni_oyunu_baslat() -> void:
+	_oyun_oturum_id += 1
+	# Yeniden başlatma, önceki oyunun devam kaydını kullanılamaz hale getirir.
+	if kayit_yoneticisi:
+		kayit_yoneticisi.kaydi_sil()
 	skor_yoneticisi = SkorYoneticisi.new()
 	level_ayarini_uygula()
 	dusme_suresi = 0.0
@@ -282,6 +288,8 @@ func level_ayarini_uygula() -> void:
 
 func oyunu_sonlandir(tamamlandi_mi: bool) -> void:
 	oyun_aktif = false
+	# Bitmiş oyun hiçbir zaman devam kaydı olarak geri dönmemeli.
+	kayit_yoneticisi.kaydi_sil()
 	skor_yoneticisi.yuksek_skoru_kaydet()
 	oyun_bitti_paneli.visible = true
 	if tamamlandi_mi:
@@ -294,8 +302,11 @@ func oyunu_sonlandir(tamamlandi_mi: bool) -> void:
 
 func _exit_tree() -> void:
 	# Sahne kapatılırsa veya uygulama sonlanırsa mevcut yüksek skor korunur.
+	_oyun_oturum_id += 1
 	skor_yoneticisi.yuksek_skoru_kaydet()
-	oyunu_kaydet()
+	# Satır silme animasyonu ve oyun sonu, devam için kararlı durumlar değildir.
+	if oyun_aktif and not satir_silme_animasyonu_aktif:
+		oyunu_kaydet()
 
 func dokunmatik_komutu_uygula(bitis_konumu: Vector2) -> void:
 	var hareket := bitis_konumu - dokunma_baslangici
@@ -308,15 +319,16 @@ func dokunmatik_komutu_uygula(bitis_konumu: Vector2) -> void:
 
 func _draw() -> void:
 	var konum := tahta_konumu()
-	var tahta_alani := Rect2(konum - Vector2(8, 8), Vector2(tahta.genislik * BLOK_BOYUTU + 16, tahta.yukseklik * BLOK_BOYUTU + 16))
+	var blok_boyutu := guncel_blok_boyutu()
+	var tahta_alani := Rect2(konum - Vector2(8, 8) * _yerlesim_olcegi, Vector2(tahta.genislik * blok_boyutu + 16.0 * _yerlesim_olcegi, tahta.yukseklik * blok_boyutu + 16.0 * _yerlesim_olcegi))
 	if not tahta.ozel_izgara_mi():
 		draw_rect(tahta_alani, Color("111827"), true)
-		draw_rect(tahta_alani, Color("f43f5e"), false, 3.0)
+		draw_rect(tahta_alani, Color("f43f5e"), false, 3.0 * _yerlesim_olcegi)
 	for y in tahta.yukseklik:
 		for x in tahta.genislik:
 			if not tahta.hucre_aktif_mi(Vector2i(x, y)):
 				continue
-			var alan := Rect2(konum + Vector2(x, y) * BLOK_BOYUTU, Vector2.ONE * BLOK_BOYUTU)
+			var alan := Rect2(konum + Vector2(x, y) * blok_boyutu, Vector2.ONE * blok_boyutu)
 			var hucre := Vector2i(x, y)
 			var yanma_rengi := yanma_rengini_al(hucre.y)
 			draw_rect(alan, yanma_rengi if yanma_rengi != Color.TRANSPARENT else (Color("111827") if tahta.ozel_izgara_mi() else Color("202535")), true)
@@ -330,9 +342,9 @@ func _draw() -> void:
 	sonraki_parcayi_ciz()
 
 func hucre_ciz(hucre: Vector2i, renk: Color) -> void:
-	var alan := Rect2(tahta_konumu() + Vector2(hucre) * BLOK_BOYUTU, Vector2.ONE * BLOK_BOYUTU)
+	var alan := Rect2(tahta_konumu() + Vector2(hucre) * guncel_blok_boyutu(), Vector2.ONE * guncel_blok_boyutu())
 	var yanma_rengi := yanma_rengini_al(hucre.y)
-	draw_rect(alan.grow(-2), yanma_rengi if yanma_rengi != Color.TRANSPARENT else renk, true)
+	draw_rect(alan.grow(-2.0 * _yerlesim_olcegi), yanma_rengi if yanma_rengi != Color.TRANSPARENT else renk, true)
 
 func yanma_rengini_al(y: int) -> Color:
 	if not satir_silme_animasyonu_aktif or y not in yanan_satirlar:
@@ -341,10 +353,24 @@ func yanma_rengini_al(y: int) -> Color:
 	return Color(1.0, 0.9 - ilerleme * 0.7, 0.15, 1.0)
 
 func tahta_konumu() -> Vector2:
-	return REFERANS_TAHTA_KONUMU + Vector2(
+	var referans_konum := REFERANS_TAHTA_KONUMU + Vector2(
 		(REFERANS_TAHTA_GENISLIGI - tahta.genislik) * BLOK_BOYUTU / 2.0,
 		(REFERANS_TAHTA_YUKSEKLIGI - tahta.yukseklik) * BLOK_BOYUTU
 	)
+	return _yerlesim_ofseti + referans_konum * _yerlesim_olcegi
+
+func guncel_blok_boyutu() -> float:
+	return BLOK_BOYUTU * _yerlesim_olcegi
+
+func yerlesimi_guncelle() -> void:
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	# Referans arayüz, her en-boy oranında tam sığacak şekilde ölçeklenir.
+	_yerlesim_olcegi = minf(size.x / REFERANS_EKRAN_BOYUTU.x, size.y / REFERANS_EKRAN_BOYUTU.y)
+	_yerlesim_ofseti = (size - REFERANS_EKRAN_BOYUTU * _yerlesim_olcegi) * 0.5
+	$Arayuz.position = _yerlesim_ofseti
+	$Arayuz.scale = Vector2.ONE * _yerlesim_olcegi
+	queue_redraw()
 
 func sonraki_parcayi_ciz() -> void:
 	if not sonraki_parca:
@@ -355,46 +381,68 @@ func sonraki_parcayi_ciz() -> void:
 	for hucre in hucreler:
 		en_kucuk_x = min(en_kucuk_x, hucre.x)
 		en_kucuk_y = min(en_kucuk_y, hucre.y)
+	var onizleme_alani := sonraki_onizleme_alani()
+	var genislik := 0
+	var yukseklik := 0
 	for hucre in hucreler:
-		var konum := Vector2(558 + (hucre.x - en_kucuk_x) * 24, 445 + (hucre.y - en_kucuk_y) * 24)
-		draw_rect(Rect2(konum, Vector2(20, 20)), sonraki_parca.renk, true)
+		genislik = max(genislik, hucre.x - en_kucuk_x + 1)
+		yukseklik = max(yukseklik, hucre.y - en_kucuk_y + 1)
+	var hucre_boyutu: float = minf(minf(onizleme_alani.size.x / float(genislik), onizleme_alani.size.y / float(yukseklik)), 24.0 * _yerlesim_olcegi)
+	var cizim_boyutu := Vector2(genislik, yukseklik) * hucre_boyutu
+	var baslangic: Vector2 = onizleme_alani.get_center() - cizim_boyutu * 0.5
+	for hucre in hucreler:
+		var konum: Vector2 = baslangic + Vector2(hucre.x - en_kucuk_x, hucre.y - en_kucuk_y) * hucre_boyutu
+		draw_rect(Rect2(konum, Vector2.ONE * (hucre_boyutu - 3.0 * _yerlesim_olcegi)), sonraki_parca.renk, true)
+
+func sonraki_onizleme_alani() -> Rect2:
+	var panel_alani: Rect2 = $Arayuz/SonrakiPaneli.get_global_rect()
+	var kenar_boslugu := 12.0 * _yerlesim_olcegi
+	var baslik_boslugu := 38.0 * _yerlesim_olcegi
+	return Rect2(
+		panel_alani.position + Vector2(kenar_boslugu, baslik_boslugu),
+		panel_alani.size - Vector2(kenar_boslugu * 2.0, baslik_boslugu + kenar_boslugu)
+	)
 
 func oyunu_kaydet() -> void:
+	if not oyun_aktif or satir_silme_animasyonu_aktif:
+		return
 	kayit_yoneticisi.kaydet(tahta, skor_yoneticisi, aktif_parca, sonraki_parca, dusme_araligi, parca_uretici)
 
 func oyunu_yukle() -> bool:
 	var data = kayit_yoneticisi.yukle()
 	if data.is_empty():
 		return false
+	_oyun_oturum_id += 1
 	# Tahta
-	tahta = OyunTahtasi.new(data.genislik, data.yukseklik)
+	var aktif_hucreler: Array = []
+	for item in data.get("aktif_hucreler", []):
+		aktif_hucreler.append(Vector2i(int(item.x), int(item.y)))
+	tahta = OyunTahtasi.new(int(data.genislik), int(data.yukseklik), aktif_hucreler)
 	for item in data.kilitli:
-		var h = Vector2i(item.x, item.y)
+		var h = Vector2i(int(item.x), int(item.y))
 		tahta.kilitli_hucreler[h] = Color(item.r, item.g, item.b, item.a)
 	# Skor
-	skor_yoneticisi.skor = data.skor
-	skor_yoneticisi.ana_level = data.ana_level
-	skor_yoneticisi.alt_seviye = data.alt_seviye
-	skor_yoneticisi.asama_satirlari = data.asama_satirlari
-	skor_yoneticisi.silinen_satir = data.silinen_satir
+	skor_yoneticisi.skor = int(data.skor)
+	skor_yoneticisi.ana_level = int(data.ana_level)
+	skor_yoneticisi.alt_seviye = int(data.alt_seviye)
+	skor_yoneticisi.asama_satirlari = int(data.asama_satirlari)
+	skor_yoneticisi.silinen_satir = int(data.silinen_satir)
 	# Düşme
 	if data.has("dusme_araligi"):
 		dusme_araligi = data.dusme_araligi
 	# Aktif parça
 	if data.has("aktif") and data.aktif != null:
 		var a = data.aktif
-		aktif_parca = TetrisParcasi.new()
+		aktif_parca = TetrisParcasi.new(a.kalip, Color(a.renk.r, a.renk.g, a.renk.b, a.renk.a))
 		aktif_parca.konum = Vector2i(a.x, a.y)
 		aktif_parca.donus = a.donus
-		aktif_parca.renk = Color(a.renk.r, a.renk.g, a.renk.b, a.renk.a)
-		aktif_parca.kalip = a.kalip
 	# Sonraki parça
 	if data.has("sonraki") and data.sonraki != null:
-		sonraki_parca = TetrisParcasi.new()
-		sonraki_parca.renk = Color(data.sonraki.renk.r, data.sonraki.renk.g, data.sonraki.renk.b, data.sonraki.renk.a)
-		sonraki_parca.kalip = data.sonraki.kalip
-	# Parça üretici yeniden oluştur
-	level_ayarini_uygula()
+		sonraki_parca = TetrisParcasi.new(data.sonraki.kalip, Color(data.sonraki.renk.r, data.sonraki.renk.g, data.sonraki.renk.b, data.sonraki.renk.a))
+	# Kayıtlı tahtaya dokunmadan, yalnızca ilgili levelin parça havuzunu kur.
+	var ayar := level_yoneticisi.level_ayari_al(skor_yoneticisi.ana_level)
+	parca_uretici = ParcaUretici.new(ayar.parca_havuzu)
+	ses_yoneticisi.tema_degistir(clampi(skor_yoneticisi.ana_level, 1, 3))
 	arayuzu_guncelle()
 	queue_redraw()
 	return true
