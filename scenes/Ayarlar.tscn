@@ -1,0 +1,70 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ayarlar_sahnesi.gd" id="1"]
+
+[node name="Ayarlar" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="ArkaPlan" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.09, 1)
+
+[node name="Panel" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -300.0
+offset_right = 250.0
+offset_bottom = 300.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="Baslik" type="Label" parent="Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "AYARLAR"
+horizontal_alignment = 1
+
+[node name="SesAcik" type="CheckButton" parent="Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Ses Efektleri"
+
+[node name="MuzikAcik" type="CheckButton" parent="Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Müzik"
+
+[node name="MuzikSeviye" type="HSlider" parent="Panel"]
+layout_mode = 2
+min_value = 0.0
+max_value = 1.0
+step = 0.01
+value = 0.7
+
+[node name="Kontroller" type="Label" parent="Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "W: Döndür • A/D: Sol/Sağ • S: Hızlı İndir\nBoşluk: Bırak • P: Duraklat"
+horizontal_alignment = 1
+
+[node name="Geri" type="Button" parent="Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Geri"

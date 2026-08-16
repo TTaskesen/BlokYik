@@ -1,0 +1,18 @@
+# Godot 4+ specific ignores
+.godot/
+android/
+*.import
+.import/
+*.tmp
+*.translation
+*.cache
+*.uid
+
+# macOS
+.DS_Store
+
+# OpenCode config with secrets
+opencode.json
+
+# Temporary generated assets
+# google_play_assets/   # uncomment if you don't want to track generated screenshots
