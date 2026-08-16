@@ -35,3 +35,9 @@ window/handheld/orientation=1
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="vulkan"
+
+[autoload]
+
+AyarYoneticisi="*res://scripts/ayar_yoneticisi.gd"
+SesYoneticisi="*res://scripts/ses_yoneticisi.gd"
+SkorYoneticisi="*res://scripts/skor_yoneticisi.gd"
