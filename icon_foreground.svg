@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <defs>
+    <radialGradient id="top" cx="38%" cy="28%" r="70%">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.9"/>
+      <stop offset="0.3" stop-color="#ff6577" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#e91a38" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur" x="-30%" y="-80%" width="160%" height="260%">
+      <feGaussianBlur stdDeviation="8"/>
+    </filter>
+  </defs>
+  <!-- Eski kırmızı küre logosu, Android maskelerinin güvenli merkez alanında tutulur. -->
+  <ellipse cx="216" cy="286" rx="72" ry="16" fill="#130522" opacity="0.7" filter="url(#blur)"/>
+  <circle cx="216" cy="196" r="70" fill="#e91a38"/>
+  <circle cx="216" cy="196" r="64" fill="url(#top)"/>
+</svg>

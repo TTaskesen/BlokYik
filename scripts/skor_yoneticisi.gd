@@ -5,6 +5,7 @@ const KAYIT_YOLU := "user://yuksek_skor.save"
 const ALT_SEVIYE_ICIN_SATIR := 20
 const ALT_SEVIYE_SAYISI := 3
 const ANA_LEVEL_SAYISI := 5
+var kayit_yolu: String
 var skor := 0
 var yuksek_skor := 0
 var silinen_satir := 0
@@ -12,7 +13,8 @@ var ana_level := 1
 var alt_seviye := 1
 var asama_satirlari := 0
 
-func _init() -> void:
+func _init(yeni_kayit_yolu: String = KAYIT_YOLU) -> void:
+	kayit_yolu = yeni_kayit_yolu
 	yuksek_skor = yuksek_skoru_oku()
 
 func satir_ekle(satir_sayisi: int) -> Dictionary:
@@ -45,9 +47,9 @@ func indirme_puani_ekle(mesafe: int) -> void:
 	skor += mesafe * 2
 
 func yuksek_skoru_oku() -> int:
-	if not FileAccess.file_exists(KAYIT_YOLU):
+	if not FileAccess.file_exists(kayit_yolu):
 		return 0
-	var dosya := FileAccess.open(KAYIT_YOLU, FileAccess.READ)
+	var dosya := FileAccess.open(kayit_yolu, FileAccess.READ)
 	if dosya == null:
 		return 0
 	var icerik := dosya.get_as_text().strip_edges()
@@ -61,7 +63,7 @@ func yuksek_skoru_kaydet() -> void:
 	yuksek_skor = max(yuksek_skor, skor)
 	# user:// dizininin varlığını garanti et
 	DirAccess.make_dir_recursive_absolute("user://")
-	var dosya := FileAccess.open(KAYIT_YOLU, FileAccess.WRITE)
+	var dosya := FileAccess.open(kayit_yolu, FileAccess.WRITE)
 	if dosya != null:
 		dosya.store_string(str(yuksek_skor))
 		dosya.close()

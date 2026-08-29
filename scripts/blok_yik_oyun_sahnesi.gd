@@ -14,6 +14,7 @@ var level_yoneticisi := LevelYoneticisi.new()
 var ses_yoneticisi: SesYoneticisi
 var ayar_yoneticisi: AyarYoneticisi
 @export var kayit_yolu := OyunKayitYoneticisi.KAYIT_YOLU
+@export var yuksek_skor_kayit_yolu := SkorYoneticisi.KAYIT_YOLU
 var kayit_yoneticisi: OyunKayitYoneticisi
 var aktif_parca: BlokParcasi
 var sonraki_parca: BlokParcasi
@@ -29,11 +30,11 @@ var _oyun_oturum_id := 0
 var _yerlesim_olcegi := 1.0
 var _yerlesim_ofseti := Vector2.ZERO
 
-@onready var skor_etiketi: Label = $Arayuz/Skor
-@onready var yuksek_skor_etiketi: Label = $Arayuz/YuksekSkor
-@onready var seviye_etiketi: Label = $Arayuz/Seviye
-@onready var alt_seviye_etiketi: Label = $Arayuz/AltSeviye
-@onready var satir_etiketi: Label = $Arayuz/Satir
+@onready var skor_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/Skor
+@onready var yuksek_skor_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/YuksekSkor
+@onready var bolum_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/Bolum
+@onready var alt_seviye_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/AltSeviye
+@onready var satir_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/Satir
 @onready var durum_etiketi: Label = $Arayuz/Durum
 @onready var oyun_bitti_paneli: PanelContainer = $Arayuz/OyunBitti
 @onready var duraklatma_etiketi: Label = $Arayuz/Duraklatildi
@@ -54,11 +55,12 @@ func _ready() -> void:
 	ses_yoneticisi = get_node("/root/SesYonetici") as SesYoneticisi
 	ayar_yoneticisi = ses_yoneticisi.ayar_yoneticisi
 	kayit_yoneticisi = OyunKayitYoneticisi.new(kayit_yolu)
+	skor_yoneticisi = SkorYoneticisi.new(yuksek_skor_kayit_yolu)
 	var kayitli_oyun_yuklenecek := bool(get_tree().get_meta("kayitli_oyun_yukle", false))
 	get_tree().set_meta("kayitli_oyun_yukle", false)
 	if not kayitli_oyun_yuklenecek or not oyunu_yukle():
 		yeni_oyunu_baslat()
-	ses_toggle_butonu.text = "🔊" if ses_yoneticisi.ses_acik else "🔇"
+	ses_toggle_butonu.text = "Efekt: Açık" if ses_yoneticisi.efektler_acik else "Efekt: Kapalı"
 	$Arayuz/Sol.pressed.connect(func(): komutu_uygula("sol"); focusu_birak())
 	$Arayuz/Sag.pressed.connect(func(): komutu_uygula("sag"); focusu_birak())
 	$Arayuz/Asagi.pressed.connect(func(): komutu_uygula("asagi"); focusu_birak())
@@ -76,6 +78,7 @@ func _ready() -> void:
 	$Arayuz/DuraklatMenu/DuraklatIcerik/YenidenBaslatBtn.pressed.connect(func(): yeniden_baslat(); focusu_birak())
 	$Arayuz/DuraklatMenu/DuraklatIcerik/AnaMenuBtn.pressed.connect(func(): menuye_don(); focusu_birak())
 	$Arayuz/SesToggle.pressed.connect(func(): ses_toggle(); focusu_birak())
+	mobil_oyun_yerlesimini_uygula()
 	focusu_birak()
 	resized.connect(yerlesimi_guncelle)
 	yerlesimi_guncelle()
@@ -94,6 +97,10 @@ func _process(delta: float) -> void:
 		parcayi_dusur()
 
 func _unhandled_input(olay: InputEvent) -> void:
+	if olay.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		geri_istegini_isle()
+		return
 	# Arayüz butonlarının işlediği dokunuşlar buraya ulaşmaz.
 	# Böylece bir butona basmak parçayı yanlışlıkla döndürmez.
 	if not oyun_aktif:
@@ -164,7 +171,7 @@ func duraklatmayi_degistir() -> void:
 		if oyun_duraklatildi:
 			ses_yoneticisi.muzik_oynatici.stream_paused = true
 		else:
-			if ses_yoneticisi.muzik_acik and ses_yoneticisi.ses_acik:
+			if ses_yoneticisi.muzik_acik:
 				ses_yoneticisi.muzik_oynatici.stream_paused = false
 				if not ses_yoneticisi.muzik_oynatici.playing:
 					ses_yoneticisi.muzik_oynatici.play()
@@ -172,9 +179,13 @@ func duraklatmayi_degistir() -> void:
 
 func ses_toggle() -> void:
 	if ses_yoneticisi:
-		ayar_yoneticisi.ses_ayarini_kaydet(not ses_yoneticisi.ses_acik)
+		ayar_yoneticisi.efekt_ayarini_kaydet(not ses_yoneticisi.efektler_acik)
 		ses_yoneticisi.ayarları_uygula()
-		ses_toggle_butonu.text = "🔊" if ses_yoneticisi.ses_acik else "🔇"
+		ses_toggle_butonu.text = "Efekt: Açık" if ses_yoneticisi.efektler_acik else "Efekt: Kapalı"
+
+func geri_istegini_isle() -> void:
+	if oyun_aktif:
+		duraklatmayi_degistir()
 
 func parcayi_dusur() -> void:
 	if satir_silme_animasyonu_aktif:
@@ -229,14 +240,14 @@ func kilitlenmis_parcayi_isle(silinen_satir: int) -> void:
 
 func arayuzu_guncelle() -> void:
 	skor_etiketi.text = "Skor: %d" % skor_yoneticisi.skor
-	yuksek_skor_etiketi.text = "Yüksek Skor: %d" % skor_yoneticisi.yuksek_skor
-	seviye_etiketi.text = "Level: %d" % skor_yoneticisi.ana_level
+	yuksek_skor_etiketi.text = str(skor_yoneticisi.yuksek_skor)
+	bolum_etiketi.text = "Bölüm: %d" % skor_yoneticisi.ana_level
 	alt_seviye_etiketi.text = "Seviye: %d / %d" % [skor_yoneticisi.alt_seviye, SkorYoneticisi.ALT_SEVIYE_SAYISI]
-	satir_etiketi.text = "Hedef: %d / %d • %d×%d" % [skor_yoneticisi.asama_satirlari, SkorYoneticisi.ALT_SEVIYE_ICIN_SATIR, tahta.genislik, tahta.yukseklik]
+	satir_etiketi.text = "Hedef: %d / %d" % [skor_yoneticisi.asama_satirlari, SkorYoneticisi.ALT_SEVIYE_ICIN_SATIR]
 	if oyun_duraklatildi:
 		durum_etiketi.text = "Oyun duraklatıldı"
 	elif oyun_aktif:
-		durum_etiketi.text = "W: döndür • Boşluk: bırak • P: duraklat"
+		durum_etiketi.text = "Dokun: döndür • Kaydır: hareket / indir" if mobil_platform_mu() else "W: döndür • Boşluk: bırak • P: duraklat"
 	else:
 		durum_etiketi.text = "Oyun bitti — yeniden başlatabilir veya menüye dönebilirsin"
 
@@ -248,7 +259,7 @@ func yeni_oyunu_baslat() -> void:
 	# Yeniden başlatma, önceki oyunun devam kaydını kullanılamaz hale getirir.
 	if kayit_yoneticisi:
 		kayit_yoneticisi.kaydi_sil()
-	skor_yoneticisi = SkorYoneticisi.new()
+	skor_yoneticisi = SkorYoneticisi.new(yuksek_skor_kayit_yolu)
 	level_ayarini_uygula()
 	dusme_suresi = 0.0
 	dusme_araligi = 0.6
@@ -272,7 +283,7 @@ func menuye_don() -> void:
 	sahneye_gec("res://scenes/AnaMenu.tscn")
 
 func seviye_gecisini_goster() -> void:
-	seviye_gecis_etiketi.text = "LEVEL %d — SEVİYE %d\nHız %%10 arttı" % [skor_yoneticisi.ana_level, skor_yoneticisi.alt_seviye]
+	seviye_gecis_etiketi.text = "BÖLÜM %d — SEVİYE %d\nHız %%10 arttı" % [skor_yoneticisi.ana_level, skor_yoneticisi.alt_seviye]
 	seviye_gecis_etiketi.visible = true
 	seviye_gecis_zamanlayicisi.start()
 
@@ -294,7 +305,7 @@ func oyunu_sonlandir(tamamlandi_mi: bool) -> void:
 	oyun_bitti_paneli.visible = true
 	if tamamlandi_mi:
 		sonuc_basligi.text = "TEBRİKLER!"
-		sonuc_aciklamasi.text = "5 level ve 15 seviyeyi tamamladın!"
+		sonuc_aciklamasi.text = "5 bölüm ve 15 seviyeyi tamamladın!"
 	else:
 		sonuc_basligi.text = "OYUN BİTTİ"
 		sonuc_aciklamasi.text = "Yeni bir oyun başlat veya ana menüye dön."
@@ -316,6 +327,35 @@ func dokunmatik_komutu_uygula(bitis_konumu: Vector2) -> void:
 		komutu_uygula("sag" if hareket.x > 0 else "sol")
 	elif hareket.y > 0:
 		komutu_uygula("asagi")
+
+func mobil_oyun_yerlesimini_uygula(zorla := false) -> void:
+	if not zorla and not mobil_platform_mu():
+		return
+	$Arayuz/Birak.position = Vector2(520, 545)
+	$Arayuz/Birak.size = Vector2(180, 96)
+	$Arayuz/Duraklat.position = Vector2(520, 646)
+	$Arayuz/Duraklat.size = Vector2(180, 96)
+	$Arayuz/SesToggle.position = Vector2(520, 747)
+	$Arayuz/SesToggle.size = Vector2(180, 96)
+	$Arayuz/SesToggle.add_theme_font_size_override("font_size", 16)
+	for veri in [
+		[$Arayuz/Sol, Vector2(60, 860)],
+		[$Arayuz/Dondur, Vector2(190, 860)],
+		[$Arayuz/Sag, Vector2(320, 860)],
+		[$Arayuz/Asagi, Vector2(450, 860)],
+	]:
+		var buton := veri[0] as Button
+		buton.position = veri[1]
+		buton.size = Vector2(120, 96)
+	durum_etiketi.position = Vector2(80, 70)
+	durum_etiketi.size = Vector2(560, 28)
+	durum_etiketi.add_theme_font_size_override("font_size", 15)
+	duraklat_menu.position = Vector2(190, 250)
+	duraklat_menu.size = Vector2(340, 480)
+	oyun_bitti_paneli.position = Vector2(140, 270)
+	oyun_bitti_paneli.size = Vector2(440, 400)
+	minimum_dokunma_hedeflerini_uygula(duraklat_menu, true)
+	minimum_dokunma_hedeflerini_uygula(oyun_bitti_paneli, true)
 
 func _draw() -> void:
 	var konum := tahta_konumu()
@@ -365,9 +405,16 @@ func guncel_blok_boyutu() -> float:
 func yerlesimi_guncelle() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
-	# Referans arayüz, her en-boy oranında tam sığacak şekilde ölçeklenir.
-	_yerlesim_olcegi = minf(size.x / REFERANS_EKRAN_BOYUTU.x, size.y / REFERANS_EKRAN_BOYUTU.y)
-	_yerlesim_ofseti = (size - REFERANS_EKRAN_BOYUTU * _yerlesim_olcegi) * 0.5
+	var kullanilabilir_alan := Rect2(Vector2.ZERO, size)
+	if mobil_platform_mu():
+		var pencere_boyutu := Vector2(DisplayServer.window_get_size())
+		var guvenli_dikdortgen := DisplayServer.get_display_safe_area()
+		if pencere_boyutu.x > 0.0 and pencere_boyutu.y > 0.0 and guvenli_dikdortgen.size.x > 0.0 and guvenli_dikdortgen.size.y > 0.0:
+			var ekran_olcegi := size / pencere_boyutu
+			kullanilabilir_alan = Rect2(Vector2(guvenli_dikdortgen.position) * ekran_olcegi, Vector2(guvenli_dikdortgen.size) * ekran_olcegi)
+	# Referans arayüz safe area içinde her en-boy oranında tam sığar.
+	_yerlesim_olcegi = minf(kullanilabilir_alan.size.x / REFERANS_EKRAN_BOYUTU.x, kullanilabilir_alan.size.y / REFERANS_EKRAN_BOYUTU.y)
+	_yerlesim_ofseti = kullanilabilir_alan.position + (kullanilabilir_alan.size - REFERANS_EKRAN_BOYUTU * _yerlesim_olcegi) * 0.5
 	$Arayuz.position = _yerlesim_ofseti
 	$Arayuz.scale = Vector2.ONE * _yerlesim_olcegi
 	queue_redraw()

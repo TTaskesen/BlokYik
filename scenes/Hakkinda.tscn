@@ -20,49 +20,62 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.04, 0.05, 0.09, 1)
+mouse_filter = 2
 
-[node name="Panel" type="VBoxContainer" parent="."]
+[node name="GuvenliAlan" type="MarginContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -250.0
-offset_top = -250.0
-offset_right = 250.0
-offset_bottom = 250.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 16
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
 
-[node name="Baslik" type="Label" parent="Panel"]
+[node name="IcerikKaydirici" type="ScrollContainer" parent="GuvenliAlan"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Ortala" type="CenterContainer" parent="GuvenliAlan/IcerikKaydirici"]
+layout_mode = 2
+
+[node name="Panel" type="VBoxContainer" parent="GuvenliAlan/IcerikKaydirici/Ortala"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Baslik" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 48
 text = "HAKKINDA"
 horizontal_alignment = 1
+autowrap_mode = 2
 
-[node name="Metin" type="Label" parent="Panel"]
+[node name="Metin" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Blok Yık\nGodot 4.7 • 2026\nGeliştirici: Turgut Taskesen\n\nÇevrimdışı oynanabilen blok oyunu.\nKişisel veri, reklam ve hesap kullanılmaz."
 horizontal_alignment = 1
+autowrap_mode = 2
 
-[node name="Gizlilik" type="Button" parent="Panel"]
+[node name="Gizlilik" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Gizlilik Politikası"
 
-[node name="GizlilikDurumu" type="Label" parent="Panel"]
+[node name="GizlilikDurumu" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.7, 0.86, 1)
 theme_override_font_sizes/font_size = 16
-text = ""
 autowrap_mode = 2
 horizontal_alignment = 1
 
-[node name="Geri" type="Button" parent="Panel"]
+[node name="Geri" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Geri"

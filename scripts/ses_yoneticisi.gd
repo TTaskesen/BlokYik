@@ -10,7 +10,7 @@ const MUZIK_TEMALARI := {
 }
 
 var ayar_yoneticisi := AyarYoneticisi.new()
-var ses_acik := true
+var efektler_acik := true
 var muzik_acik := true
 var oynatici: AudioStreamPlayer
 var muzik_oynatici: AudioStreamPlayer
@@ -24,19 +24,19 @@ func _ready() -> void:
 	muzik_oynatici = AudioStreamPlayer.new()
 	muzik_oynatici.volume_db = linear_to_db(1.0)
 	add_child(muzik_oynatici)
-	muzik_oynatici.finished.connect(func(): if muzik_acik and ses_acik: muzik_oynatici.play())
+	muzik_oynatici.finished.connect(func(): if muzik_acik: muzik_oynatici.play())
 	sesleri_yukle()
 	muzik_yukle()
 	ayarları_uygula()
 
 func ayarları_uygula() -> void:
-	ses_acik = ayar_yoneticisi.ses_acik
+	efektler_acik = ayar_yoneticisi.efektler_acik
 	muzik_acik = ayar_yoneticisi.muzik_acik
 	if muzik_oynatici:
 		muzik_oynatici.volume_db = linear_to_db(maxf(ayar_yoneticisi.muzik_seviyesi, 0.001))
-	if not ses_acik:
-		sesleri_durdur()
-	elif muzik_acik:
+	if not efektler_acik and oynatici:
+		oynatici.stop()
+	if muzik_acik:
 		muzik_baslat()
 	else:
 		muzik_durdur()
@@ -65,13 +65,13 @@ func tema_degistir(tema_no: int) -> void:
 	var poz = muzik_oynatici.get_playback_position() if muzik_oynatici.playing else 0.0
 	muzik_oynatici.stream = yeni_stream
 	muzik_stream = yeni_stream
-	if muzik_acik and ses_acik:
+	if muzik_acik:
 		muzik_oynatici.play()
 		muzik_oynatici.seek(poz)
 
 
 func efekt_cal(efekt_adi: String) -> void:
-	if not ses_acik:
+	if not efektler_acik:
 		return
 	var frekans := 440.0
 	var sure := 0.08
@@ -111,7 +111,7 @@ func seviye_guncelle() -> void:
 		muzik_oynatici.volume_db = linear_to_db(seviye)
 
 func muzik_baslat() -> void:
-	if not muzik_acik or not ses_acik:
+	if not muzik_acik:
 		return
 	if muzik_oynatici and muzik_oynatici.stream:
 		muzik_oynatici.stream_paused = false

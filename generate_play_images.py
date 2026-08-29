@@ -79,7 +79,7 @@ def create_image_1_ana_menu():
     th = bbox[3]-bbox[1]
     draw.text(((WIDTH-tw)//2, 400), title, fill=ACCENT_RED, font=font_title)
     
-    sub = "Godot 4 • Masaüstü • Web • Android"
+    sub = "Yerleştir • Satırları temizle • Rekorunu kır"
     bbox = draw.textbbox((0,0), sub, font=font_sub)
     sw = bbox[2]-bbox[0]
     draw.text(((WIDTH-sw)//2, 540), sub, fill=TEXT_GRAY, font=font_sub)
@@ -202,18 +202,9 @@ def create_image_5_yuksek_skorlar():
     draw.text((WIDTH//2 - 280, 200), "YÜKSEK SKORLAR", fill=ACCENT_RED, font=font_title)
     
     font_row = get_font(44)
-    scores = [
-        ("1.  ELİF", "15,420"),
-        ("2.  AYŞE", "12,880"),
-        ("3.  MEHMET", "11,200"),
-        ("4.  SEN", "8,420"),
-        ("5.  CAN", "7,330"),
-    ]
-    y = 420
-    for name, score in scores:
-        draw.text((200, y), name, fill=TEXT_WHITE, font=font_row)
-        draw.text((800, y), score, fill=TEXT_GRAY, font=font_row)
-        y += 100
+    draw.rounded_rectangle([170, 430, 910, 680], radius=24, fill=PANEL_COLOR, outline=(100,120,160), width=3)
+    draw.text((275, 500), "Yüksek Skor", fill=TEXT_GRAY, font=font_row)
+    draw.text((690, 500), "8,420", fill=TEXT_WHITE, font=font_row)
     
     img.save(os.path.join(OUTPUT_DIR, "05_yuksek_skorlar.png"))
 
