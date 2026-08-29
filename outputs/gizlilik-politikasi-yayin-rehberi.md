@@ -4,7 +4,7 @@
 
 ## Kullanıcının tamamlaması gerekenler
 
-1. HTML içindeki `[Uygulama adı]`, `[Geliştirici adı]` ve `[iletisim@ornek.com]` alanlarını gerçek bilgilerle değiştir.
+1. HTML içindeki uygulama, geliştirici ve iletişim bilgilerini kontrol et. Bu projede iletişim adresi `taskesen@msn.com` olarak ayarlanmıştır.
 2. HTTPS destekleyen bir barındırma seç: GitHub Pages, Cloudflare Pages veya kendi web alanın.
 3. `docs/privacy-policy/index.html` dosyasını seçtiğin hizmette yayınla.
 4. Gizli anahtar, hesap şifresi veya özel erişim bilgilerini repoya koyma.
