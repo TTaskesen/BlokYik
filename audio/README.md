@@ -1,4 +1,4 @@
-# Tetris ses dosyaları
+# Blok Yık ses dosyaları
 
 Bu klasöre aşağıdaki adlarla `.wav` sesleri koyabilirsin:
 

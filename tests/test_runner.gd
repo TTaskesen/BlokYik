@@ -1,7 +1,7 @@
 extends SceneTree
 
-const TEST_KAYIT_YOLU := "user://tetris_test_oyun_kayit.save"
-const OYUN_SAHNESI := preload("res://scenes/TetrisOyun.tscn")
+const TEST_KAYIT_YOLU := "user://blok_yik_test_oyun_kayit.save"
+const OYUN_SAHNESI := preload("res://scenes/BlokYikOyun.tscn")
 const MENU_SAHNESI := preload("res://scenes/AnaMenu.tscn")
 
 var basarisizlik_sayisi := 0
@@ -25,10 +25,10 @@ func testleri_calistir() -> void:
 	skor.alt_seviye = 3
 	skor.asama_satirlari = 12
 	skor.silinen_satir = 42
-	var aktif := TetrisParcasi.new([["00"]], Color.RED)
+	var aktif := BlokParcasi.new([["00"]], Color.RED)
 	aktif.konum = Vector2i(4, 7)
 	aktif.donus = 1
-	var sonraki := TetrisParcasi.new([["0"], ["0"]], Color.YELLOW)
+	var sonraki := BlokParcasi.new([["0"], ["0"]], Color.YELLOW)
 	kayit_yoneticisi.kaydet(tahta, skor, aktif, sonraki, 0.25, ParcaUretici.new())
 	kontrol(kayit_yoneticisi.kayit_var_mi(), "Kayıt yöneticisi yeni kaydı bulmalı.")
 	var ham_kayit := kayit_yoneticisi.yukle()
@@ -68,9 +68,9 @@ func testleri_calistir() -> void:
 
 	# Her kilitlenme sonrasında, yeni aktif ve sonraki parça ile tutarlı bir kayıt oluşmalı.
 	oyun.tahta = OyunTahtasi.new(10, 20)
-	oyun.aktif_parca = TetrisParcasi.new([["0"]], Color.GREEN)
+	oyun.aktif_parca = BlokParcasi.new([["0"]], Color.GREEN)
 	oyun.aktif_parca.konum = Vector2i(3, 19)
-	oyun.sonraki_parca = TetrisParcasi.new([["00"]], Color.CYAN)
+	oyun.sonraki_parca = BlokParcasi.new([["00"]], Color.CYAN)
 	oyun.parcayi_dusur()
 	var kilit_sonrasi_kayit := kayit_yoneticisi.yukle()
 	kontrol(not kilit_sonrasi_kayit.is_empty(), "Parça kilitlenince devam kaydı oluşmalı.")
@@ -157,5 +157,5 @@ func testleri_calistir() -> void:
 
 	DirAccess.remove_absolute(TEST_KAYIT_YOLU)
 	if basarisizlik_sayisi == 0:
-		print("Tüm Tetris kontrolleri başarılı.")
+		print("Tüm Blok Yık kontrolleri başarılı.")
 	quit(basarisizlik_sayisi)

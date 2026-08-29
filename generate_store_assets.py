@@ -2,7 +2,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-out_dir = "/Users/turguttaskesen/GodotProjects/TetrisGodot/google_play_assets"
+out_dir = "/Users/turguttaskesen/GodotProjects/BlokYik/google_play_assets"
 os.makedirs(out_dir, exist_ok=True)
 
 def get_font(size):
@@ -25,7 +25,7 @@ for i in range(h):
 
 # Title
 font_title = get_font(86)
-text = "TETRİS"
+text = "BLOK YIK"
 bbox = draw.textbbox((0,0), text, font=font_title)
 tw = bbox[2]-bbox[0]
 draw.text(((w-tw)//2, 120), text, fill=(241,55,77), font=font_title)
@@ -49,7 +49,7 @@ img.save(os.path.join(out_dir, "feature_graphic_1024x500.png"))
 # App icon 512x512
 ic = Image.new("RGB", (512,512), (54,61,82))
 d = ImageDraw.Draw(ic)
-# simple icon with Tetris piece
+# simple icon with block piece
 draw.rounded_rectangle([10,10,502,502], radius=70, fill=(54,61,82), outline=(33,37,50), width=8)
 # central block
 c = 256

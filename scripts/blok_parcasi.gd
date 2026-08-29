@@ -1,4 +1,4 @@
-class_name TetrisParcasi
+class_name BlokParcasi
 extends RefCounted
 
 var kalip: Array
@@ -25,4 +25,3 @@ func dondur() -> void:
 
 func donusu_geri_al() -> void:
 	donus -= 1
-

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Generate 8 Google Play store screenshots for Tetris Godot game.
+Generate 8 Google Play store screenshots for Blok Yık game.
 Size: 1080x1920 (9:16) - phone screenshots.
 """
 from PIL import Image, ImageDraw, ImageFont
 import os
 
-OUTPUT_DIR = "/Users/turguttaskesen/GodotProjects/TetrisGodot/google_play_assets"
+OUTPUT_DIR = "/Users/turguttaskesen/GodotProjects/BlokYik/google_play_assets"
 WIDTH, HEIGHT = 1080, 1920
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -18,7 +18,7 @@ ACCENT_RED = (241, 55, 77)      # ~0.95,0.22,0.3
 TEXT_WHITE = (255, 255, 255)
 TEXT_GRAY = (165, 176, 225)
 
-# Tetris piece colors
+# Block piece colors
 PIECE_COLORS = [
     (66, 140, 191),   # blue
     (241, 196, 15),   # yellow
@@ -40,7 +40,7 @@ def get_font(size):
     return ImageFont.load_default()
 
 def draw_board(draw, x, y, w, h, rows=20, cols=10, fill_cells=None):
-    """Draw simple Tetris board grid"""
+    """Draw simple block-game board grid"""
     cell_w = w // cols
     cell_h = h // rows
     # board border
@@ -72,7 +72,7 @@ def create_image_1_ana_menu():
     font_sub = get_font(36)
     font_btn = get_font(48)
     
-    title = "TETRİS"
+    title = "BLOK YIK"
     # Center
     bbox = draw.textbbox((0,0), title, font=font_title)
     tw = bbox[2]-bbox[0]
@@ -137,7 +137,7 @@ def create_image_3_oyun_baslangic():
     
     # Header
     font_header = get_font(56)
-    draw.text((400, 60), "TETRIS", fill=TEXT_WHITE, font=font_header)
+    draw.text((400, 60), "BLOK YIK", fill=TEXT_WHITE, font=font_header)
     
     # Main board area
     board_x, board_y, board_w, board_h = 120, 260, 540, 1080

@@ -10,9 +10,9 @@ const SES_YOLLARI := {
 }
 const MUZIK_YOLU := "res://audio/muzik.wav"
 const MUZIK_TEMALARI := {
-	1: "res://audio/muzik_1.wav",
-	2: "res://audio/muzik_2.wav",
-	3: "res://audio/muzik_3.wav",
+	1: "res://audio/muzik_oyun_baslangic.wav",
+	2: "res://audio/muzik_oyun_baslangic.wav",
+	3: "res://audio/muzik_oyun_baslangic.wav",
 }
 
 var ayar_yoneticisi := AyarYoneticisi.new()

@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Tetris Godot"
+config/name="Blok Yık"
 run/main_scene="res://scenes/AnaMenu.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"

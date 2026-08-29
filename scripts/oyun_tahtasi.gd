@@ -20,7 +20,7 @@ func hucre_aktif_mi(hucre: Vector2i) -> bool:
 func ozel_izgara_mi() -> bool:
 	return not aktif_hucreler.is_empty()
 
-func gecerli_mi(parca: TetrisParcasi) -> bool:
+func gecerli_mi(parca: BlokParcasi) -> bool:
 	for hucre in parca.hucreler():
 		if not hucre_aktif_mi(hucre):
 			return false
@@ -28,7 +28,7 @@ func gecerli_mi(parca: TetrisParcasi) -> bool:
 			return false
 	return true
 
-func parcayi_kilitle(parca: TetrisParcasi) -> void:
+func parcayi_kilitle(parca: BlokParcasi) -> void:
 	for hucre in parca.hucreler():
 		if hucre.y >= 0:
 			kilitli_hucreler[hucre] = parca.renk

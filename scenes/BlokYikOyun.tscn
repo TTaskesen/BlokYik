@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/tetris_oyun_sahnesi.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/blok_yik_oyun_sahnesi.gd" id="1"]
 
-[node name="TetrisOyun" type="Control"]
+[node name="BlokYikOyun" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -39,7 +39,7 @@ offset_right = 510.0
 offset_bottom = 70.0
 theme_override_colors/font_color = Color(0.95, 0.95, 1, 1)
 theme_override_font_sizes/font_size = 32
-text = "TETRIS"
+text = "BLOK YIK"
 horizontal_alignment = 1
 
 [node name="BilgiPaneli" type="ColorRect" parent="Arayuz"]

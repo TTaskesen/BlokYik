@@ -1,6 +1,6 @@
-# Tetris Godot
+# Blok Yık
 
-Godot 4.7 ile geliştirilen mobil odaklı Tetris oyunu.
+Godot 4.7 ile geliştirilen mobil odaklı blok yerleştirme oyunu.
 
 ## Özellikler
 - Ana Menü, Nasıl Oynanır, Yüksek Skorlar, Ayarlar, Hakkında

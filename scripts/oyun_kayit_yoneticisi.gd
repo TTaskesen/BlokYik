@@ -10,7 +10,7 @@ var son_kayit_mesaji := "Kaydedilmiş oyun yok."
 func _init(yeni_kayit_yolu: String = KAYIT_YOLU) -> void:
 	kayit_yolu = yeni_kayit_yolu
 
-func kaydet(tahta: OyunTahtasi, skor_yoneticisi: SkorYoneticisi, aktif_parca: TetrisParcasi, sonraki_parca: TetrisParcasi, dusme_araligi: float, _parca_uretici: ParcaUretici) -> bool:
+func kaydet(tahta: OyunTahtasi, skor_yoneticisi: SkorYoneticisi, aktif_parca: BlokParcasi, sonraki_parca: BlokParcasi, dusme_araligi: float, _parca_uretici: ParcaUretici) -> bool:
 	if tahta == null or skor_yoneticisi == null or aktif_parca == null or sonraki_parca == null:
 		return false
 	var dosya := FileAccess.open(kayit_yolu, FileAccess.WRITE)

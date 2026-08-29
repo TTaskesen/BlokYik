@@ -15,8 +15,8 @@ var ses_yoneticisi: SesYoneticisi
 var ayar_yoneticisi: AyarYoneticisi
 @export var kayit_yolu := OyunKayitYoneticisi.KAYIT_YOLU
 var kayit_yoneticisi: OyunKayitYoneticisi
-var aktif_parca: TetrisParcasi
-var sonraki_parca: TetrisParcasi
+var aktif_parca: BlokParcasi
+var sonraki_parca: BlokParcasi
 var dusme_suresi := 0.0
 var dusme_araligi := 0.6
 var oyun_aktif := true
@@ -433,12 +433,12 @@ func oyunu_yukle() -> bool:
 	# Aktif parça
 	if data.has("aktif") and data.aktif != null:
 		var a = data.aktif
-		aktif_parca = TetrisParcasi.new(a.kalip, Color(a.renk.r, a.renk.g, a.renk.b, a.renk.a))
+		aktif_parca = BlokParcasi.new(a.kalip, Color(a.renk.r, a.renk.g, a.renk.b, a.renk.a))
 		aktif_parca.konum = Vector2i(a.x, a.y)
 		aktif_parca.donus = a.donus
 	# Sonraki parça
 	if data.has("sonraki") and data.sonraki != null:
-		sonraki_parca = TetrisParcasi.new(data.sonraki.kalip, Color(data.sonraki.renk.r, data.sonraki.renk.g, data.sonraki.renk.b, data.sonraki.renk.a))
+		sonraki_parca = BlokParcasi.new(data.sonraki.kalip, Color(data.sonraki.renk.r, data.sonraki.renk.g, data.sonraki.renk.b, data.sonraki.renk.a))
 	# Kayıtlı tahtaya dokunmadan, yalnızca ilgili levelin parça havuzunu kur.
 	var ayar := level_yoneticisi.level_ayari_al(skor_yoneticisi.ana_level)
 	parca_uretici = ParcaUretici.new(ayar.parca_havuzu)

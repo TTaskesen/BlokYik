@@ -18,6 +18,6 @@ var parca_havuzu: Array
 func _init(yeni_parca_havuzu: Array = PARCA_HAVUZU) -> void:
 	parca_havuzu = yeni_parca_havuzu
 
-func yeni_parca() -> TetrisParcasi:
+func yeni_parca() -> BlokParcasi:
 	var secim: Dictionary = parca_havuzu[randi_range(0, parca_havuzu.size() - 1)]
-	return TetrisParcasi.new(secim.kalip, secim.renk)
+	return BlokParcasi.new(secim.kalip, secim.renk)

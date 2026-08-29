@@ -15,7 +15,7 @@ func _on_basla_pressed() -> void:
 	# Yeni oyun eski devam durumunu asla yanlışlıkla kullanmaz.
 	kayit_yoneticisi.kaydi_sil()
 	get_tree().set_meta("kayitli_oyun_yukle", false)
-	sahneye_gec("res://scenes/TetrisOyun.tscn")
+	sahneye_gec("res://scenes/BlokYikOyun.tscn")
 
 func _on_nasil_oynanir_pressed() -> void:
 	sahneye_gec("res://scenes/NasilOynanir.tscn")
@@ -26,7 +26,7 @@ func _on_ayarlar_pressed() -> void:
 func _on_devam_et_pressed() -> void:
 	if not kayitli_oyuna_devam_etmeye_hazir_mi():
 		return
-	sahneye_gec("res://scenes/TetrisOyun.tscn")
+	sahneye_gec("res://scenes/BlokYikOyun.tscn")
 
 func kayitli_oyuna_devam_etmeye_hazir_mi() -> bool:
 	var kayit_durumu := kayit_yoneticisi.kayit_durumu()
