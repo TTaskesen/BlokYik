@@ -2,12 +2,6 @@ class_name SesYoneticisi
 extends Node
 
 const ORNEKLEME_HIZI := 22050
-const SES_YOLLARI := {
-	"dondur": "res://audio/dondur.wav",
-	"birak": "res://audio/birak.wav",
-	"satir": "res://audio/satir.wav",
-	"oyun_bitti": "res://audio/oyun_bitti.wav",
-}
 const MUZIK_YOLU := "res://audio/muzik.wav"
 const MUZIK_TEMALARI := {
 	1: "res://audio/muzik_oyun_baslangic.wav",
@@ -54,10 +48,9 @@ func sesleri_durdur() -> void:
 		muzik_oynatici.stop()
 
 func sesleri_yukle() -> void:
-	for efekt_adi in SES_YOLLARI:
-		var yol: String = SES_YOLLARI[efekt_adi]
-		if ResourceLoader.exists(yol):
-			yuklu_sesler[efekt_adi] = load(yol)
+	# Efektler lisans belirsiz dosyalara bağlı kalmadan aşağıdaki sentezleyiciyle
+	# çalışma anında üretilir. Lisanslı dosya eklenirse burada açıkça yüklenebilir.
+	yuklu_sesler.clear()
 
 func muzik_yukle() -> void:
 	if ResourceLoader.exists(MUZIK_YOLU):

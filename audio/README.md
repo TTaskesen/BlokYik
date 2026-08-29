@@ -1,12 +1,12 @@
 # Blok Yık ses dosyaları
 
-Bu klasöre aşağıdaki adlarla `.wav` sesleri koyabilirsin:
+`muzik.wav` menü müziğidir ve `../tools/create_original_menu_music.py` ile
+üçüncü taraf örnek veya kayıt kullanılmadan üretilir. Oyun müziği olan
+`muzik_oyun_baslangic.wav` da `create_retro_music.py` ile proje içinde üretilir.
 
-- `dondur.wav` — parça döndürme
-- `birak.wav` — parçayı anında bırakma
-- `satir.wav` — satır silme
-- `oyun_bitti.wav` — oyun bitişi
+Oyun efektleri (`dondur`, `birak`, `satir`, `oyun_bitti`) lisans belirsizliği
+oluşturmaması için dosya olarak tutulmaz. `scripts/ses_yoneticisi.gd`, eksik
+dosya durumunda bu efektleri çalışma anında temel dalga biçimleriyle üretir.
 
-Oyun, dosya bulunduğunda onu otomatik kullanır. Dosya yoksa oyun içindeki geçici üretilen ses devreye girer; bu nedenle ses özelliği boş klasörde de çalışmayı sürdürür.
-
-Öneri: Kısa, mono, 44.1 kHz WAV dosyaları kullan.
+İleride dosya eklenirse yalnızca kendin ürettiğin veya lisans belgesi bulunan,
+ticari kullanımına izin verilen kısa mono WAV dosyalarını kullan.
