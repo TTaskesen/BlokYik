@@ -39,6 +39,8 @@ var tema_vurgu_rengi := Color("f43f5e")
 @onready var bolum_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/Bolum
 @onready var alt_seviye_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/AltSeviye
 @onready var satir_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/Satir
+@onready var baslik_etiketi: Label = $Arayuz/Baslik
+@onready var baslik_alt_etiketi: Label = $Arayuz/BaslikAlt
 @onready var durum_etiketi: Label = $Arayuz/Durum
 @onready var oyun_bitti_paneli: PanelContainer = $Arayuz/OyunBitti
 @onready var duraklatma_etiketi: Label = $Arayuz/Duraklatildi
@@ -251,6 +253,8 @@ func kilitlenmis_parcayi_isle(silinen_satir: int) -> void:
 		oyunu_kaydet()
 
 func arayuzu_guncelle() -> void:
+	baslik_etiketi.text = "BÖLÜM %d" % skor_yoneticisi.ana_level
+	baslik_alt_etiketi.text = guncel_level_adi.to_upper()
 	skor_etiketi.text = "Skor: %d" % skor_yoneticisi.skor
 	yuksek_skor_etiketi.text = str(skor_yoneticisi.yuksek_skor)
 	bolum_etiketi.text = "Bölüm: %d\n%s" % [skor_yoneticisi.ana_level, guncel_level_adi]
@@ -319,9 +323,38 @@ func level_kimligini_uygula(ayar: Dictionary) -> void:
 	$ArkaPlan.color = ayar.arka_plan
 	$Arayuz/BilgiPaneli.color = ayar.panel
 	$Arayuz/SonrakiPaneli.color = ayar.panel
+	arayuz_stilini_uygula()
 	seviye_gecis_etiketi.add_theme_color_override("font_color", tema_vurgu_rengi)
 	arayuzu_guncelle()
 	queue_redraw()
+
+func arayuz_stilini_uygula() -> void:
+	baslik_alt_etiketi.add_theme_color_override("font_color", tema_vurgu_rengi)
+	$Arayuz/BilgiPaneli/Kenar/Icerik/Puanlar.add_theme_color_override("font_color", tema_vurgu_rengi)
+	$Arayuz/BilgiPaneli/Kenar/Icerik/YuksekSkorBaslik.add_theme_color_override("font_color", tema_vurgu_rengi)
+	$Arayuz/SonrakiBaslik.add_theme_color_override("font_color", tema_vurgu_rengi)
+	var normal := stil_kutusu($Arayuz/BilgiPaneli.color.darkened(0.08), tema_vurgu_rengi, 2)
+	var hover := stil_kutusu($Arayuz/BilgiPaneli.color.lightened(0.06), tema_vurgu_rengi.lightened(0.12), 2)
+	var basili := stil_kutusu($Arayuz/BilgiPaneli.color.lightened(0.12), tema_vurgu_rengi, 3)
+	for buton in [$Arayuz/Sol, $Arayuz/Dondur, $Arayuz/Sag, $Arayuz/Asagi, $Arayuz/Birak, $Arayuz/Duraklat, $Arayuz/SesToggle]:
+		buton.add_theme_stylebox_override("normal", normal)
+		buton.add_theme_stylebox_override("hover", hover)
+		buton.add_theme_stylebox_override("pressed", basili)
+		buton.add_theme_stylebox_override("focus", basili)
+		buton.add_theme_color_override("font_color", Color("f5f7ff"))
+		buton.add_theme_color_override("font_hover_color", Color("ffffff"))
+
+func stil_kutusu(arka_plan: Color, kenar: Color, kenar_genisligi: int) -> StyleBoxFlat:
+	var stil := StyleBoxFlat.new()
+	stil.bg_color = arka_plan
+	stil.border_color = kenar
+	stil.set_border_width_all(kenar_genisligi)
+	stil.set_corner_radius_all(8)
+	stil.content_margin_left = 10.0
+	stil.content_margin_right = 10.0
+	stil.content_margin_top = 6.0
+	stil.content_margin_bottom = 6.0
+	return stil
 
 func oyunu_sonlandir(tamamlandi_mi: bool) -> void:
 	oyun_aktif = false
@@ -389,9 +422,12 @@ func _draw() -> void:
 	var konum := tahta_konumu()
 	var blok_boyutu := guncel_blok_boyutu()
 	var tahta_alani := Rect2(konum - Vector2(8, 8) * _yerlesim_olcegi, Vector2(tahta.genislik * blok_boyutu + 16.0 * _yerlesim_olcegi, tahta.yukseklik * blok_boyutu + 16.0 * _yerlesim_olcegi))
+	for panel in [$Arayuz/BilgiPaneli, $Arayuz/SonrakiPaneli]:
+		var panel_rect: Rect2 = panel.get_global_rect()
+		draw_rect(panel_rect.grow(2.0 * _yerlesim_olcegi), tema_vurgu_rengi, false, 2.0 * _yerlesim_olcegi)
 	if not tahta.ozel_izgara_mi():
 		draw_rect(tahta_alani, tema_tahta_rengi.darkened(0.25), true)
-		draw_rect(tahta_alani, tema_vurgu_rengi, false, 3.0 * _yerlesim_olcegi)
+		draw_rect(tahta_alani, tema_vurgu_rengi, false, 4.0 * _yerlesim_olcegi)
 	for y in tahta.yukseklik:
 		for x in tahta.genislik:
 			if not tahta.hucre_aktif_mi(Vector2i(x, y)):

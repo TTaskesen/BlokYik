@@ -13,6 +13,9 @@ config_version=5
 config/name="Blok Yık"
 run/main_scene="res://scenes/AnaMenu.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
+boot_splash/bg_color=Color(0.02, 0.03, 0.08, 1)
+boot_splash/stretch_mode=0
+boot_splash/image="res://splash_logo.png"
 config/icon="res://icon.svg"
 
 [autoload]

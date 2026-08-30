@@ -17,6 +17,7 @@ var cikis_istegi_isleyicisi: Callable
 
 func _ready() -> void:
 	kayit_yoneticisi = OyunKayitYoneticisi.new(kayit_yolu)
+	ana_menu_stilini_uygula()
 	cikis_butonu.visible = not mobil_platform_mu()
 	cikis_modalini_goster(false)
 	$CikisOnayi/Icerik/Evet.pressed.connect(_uygulamadan_cik)
@@ -26,6 +27,7 @@ func _ready() -> void:
 	resized.connect(ana_menu_yerlesimini_guncelle)
 	ana_menu_yerlesimini_guncelle()
 	devam_et_durumunu_guncelle()
+	queue_redraw()
 
 func _on_basla_pressed() -> void:
 	# Yeni oyun eski devam durumunu asla yanlışlıkla kullanmaz.
@@ -97,7 +99,7 @@ func ana_menu_yerlesimini_guncelle() -> void:
 	menu_paneli.custom_minimum_size.x = minf(420.0, kullanilabilir_genislik)
 	if mobil_platform_mu():
 		menu_paneli.add_theme_constant_override("separation", 14)
-		menu_paneli.get_node("Baslik").add_theme_font_size_override("font_size", 52)
+		menu_paneli.get_node("Baslik").add_theme_font_size_override("font_size", 50)
 	ortala.custom_minimum_size = Vector2(
 		kullanilabilir_genislik,
 		maxf(icerik_kaydirici.size.y, menu_paneli.get_combined_minimum_size().y)
@@ -117,6 +119,52 @@ func ana_menu_yerlesimini_guncelle() -> void:
 	cikis_onayi.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	cikis_onayi.position = guvenli_dikdortgen.get_center() - onay_boyutu * 0.5
 	cikis_onayi.size = onay_boyutu
+	queue_redraw()
+
+func ana_menu_stilini_uygula() -> void:
+	var vurgu := Color("f43f5e")
+	var panel_rengi := Color("141b2d")
+	var normal := stil_kutusu(panel_rengi.darkened(0.08), vurgu, 2)
+	var hover := stil_kutusu(panel_rengi.lightened(0.08), vurgu.lightened(0.1), 2)
+	var basili := stil_kutusu(panel_rengi.lightened(0.16), vurgu, 3)
+	for buton in [
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Basla,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/NasilOynanir,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Ayarlar,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/DevamEt,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/YuksekSkorlar,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Hakkinda,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Cikis,
+		$CikisOnayi/Icerik/Evet,
+		$CikisOnayi/Icerik/Vazgec,
+	]:
+		buton.add_theme_stylebox_override("normal", normal)
+		buton.add_theme_stylebox_override("hover", hover)
+		buton.add_theme_stylebox_override("pressed", basili)
+		buton.add_theme_stylebox_override("focus", basili)
+		buton.add_theme_color_override("font_color", Color("f5f7ff"))
+		buton.add_theme_color_override("font_hover_color", Color("ffffff"))
+	$GuvenliAlan/IcerikKaydirici/Ortala/Panel/KayitDurumu.add_theme_color_override("font_color", vurgu.lightened(0.15))
+	$GuvenliAlan/IcerikKaydirici/Ortala/Panel/AltBaslik.add_theme_color_override("font_color", Color("a6b4d9"))
+
+func stil_kutusu(arka_plan: Color, kenar: Color, kenar_genisligi: int) -> StyleBoxFlat:
+	var stil := StyleBoxFlat.new()
+	stil.bg_color = arka_plan
+	stil.border_color = kenar
+	stil.set_border_width_all(kenar_genisligi)
+	stil.set_corner_radius_all(8)
+	stil.content_margin_left = 14.0
+	stil.content_margin_right = 14.0
+	stil.content_margin_top = 8.0
+	stil.content_margin_bottom = 8.0
+	return stil
+
+func _draw() -> void:
+	if not is_instance_valid(menu_paneli) or menu_paneli.size == Vector2.ZERO:
+		return
+	var panel_rect := menu_paneli.get_global_rect().grow(18.0)
+	draw_rect(panel_rect, Color(0.078, 0.106, 0.176, 0.92), true)
+	draw_rect(panel_rect, Color("f43f5e"), false, 2.0)
 
 func _guvenli_alan_bosluklarini_guncelle() -> void:
 	var sol := 24.0

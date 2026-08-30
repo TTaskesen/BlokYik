@@ -48,13 +48,13 @@ static func kurtar(hedef: String, dogrulayici: Callable) -> String:
 		return hedef
 	var yedek := yedek_yol(hedef)
 	if bool(dogrulayici.call(yedek)):
-		var gecici := gecici_yol(hedef)
-		if not DirAccess.dir_exists_absolute(gecici):
-			_dosyayi_sil(gecici)
-			if dosyayi_kopyala(yedek, gecici) and bool(dogrulayici.call(gecici)) and dosyayi_degistir(gecici, hedef) and bool(dogrulayici.call(hedef)):
+		var yedekten_gecici := gecici_yol(hedef)
+		if not DirAccess.dir_exists_absolute(yedekten_gecici):
+			_dosyayi_sil(yedekten_gecici)
+			if dosyayi_kopyala(yedek, yedekten_gecici) and bool(dogrulayici.call(yedekten_gecici)) and dosyayi_degistir(yedekten_gecici, hedef) and bool(dogrulayici.call(hedef)):
 				gecici_artiklari_temizle(hedef)
 				return hedef
-			_dosyayi_sil(gecici)
+			_dosyayi_sil(yedekten_gecici)
 		return yedek
 	var gecici := gecici_yol(hedef)
 	if bool(dogrulayici.call(gecici)) and dosyayi_degistir(gecici, hedef) and bool(dogrulayici.call(hedef)):
