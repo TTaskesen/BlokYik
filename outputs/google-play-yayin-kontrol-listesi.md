@@ -1,8 +1,8 @@
 # Google Play yayın kontrol listesi
 
-Hazırlık tarihi: 29 Ağustos 2026  
+Son doğrulama: 30 Ağustos 2026
 Proje: `Blok Yık`  
-Kontrol kapsamı: kaynak kodu, `project.godot`, mevcut mağaza varlıkları ve otomatik testler.
+Kontrol kapsamı: kaynak kodu, Android export preset, mevcut AAB, mağaza varlıkları ve otomatik testler.
 
 ## Durum özeti
 
@@ -13,16 +13,17 @@ Kontrol kapsamı: kaynak kodu, `project.godot`, mevcut mağaza varlıkları ve o
 | Mobil dikey düzen | Tamam | 720×960 referans, `canvas_items`, dikey yön. Gerçek cihaz testi ayrıca gerekli. |
 | Android export şablonu | Tamam | Godot 4.7 Android debug/release şablonları kurulu. |
 | Android SDK API 36 | Tamam | Yerel SDK içinde `android-36` mevcut. 31 Ağustos 2026 sonrası yeni uygulama/update için API 36 gereklidir. |
-| Android App Bundle | Eksik | `export_presets.cfg` yok; Android preset ve release export oluşturulmalı. |
-| Paket adı | Kullanıcı kararı gerekli | Kalıcı bir Android application ID seçilmeli. |
-| Release imzası | Kullanıcı kararı gerekli | Release keystore kullanıcı tarafından oluşturulmalı; parolası repoya yazılmamalı. |
+| Android App Bundle | Eski kaynak adayı | `BlokYik-v0.1.1-release.aab` mevcut; 29 Ağustos 2026 21:29:38 tarihinde oluşturulmuş. Bu kontrol listesindeki kod düzeltmelerini içermediği için güncel yayın adayı değildir. |
+| Paket adı | Tamam | Preset ve AAB manifestinde `com.taskesen.blokyik`. |
+| Sürüm | Doğrulandı | `export_presets.cfg`: `0.1.1` / code `2`. AAB manifestinde paket ile `0.1.1` doğrulandı; code değeri yerel protobuf manifest aracında ayrıca çözümlenemedi. |
+| Release imzası | İmzalı dosya mevcut | `jarsigner` imzayı doğruladı: `CN=Blok Yık Upload Key`; sertifika 14 Ocak 2054'e kadar geçerli. Anahtar/parola repoda tutulmamalı. |
 | İzinler / ağ | Kod incelemesine göre tamam | Ağ çağrısı, reklam, analiz, hesap veya satın alma kodu bulunmadı; final manifest export sonrası doğrulanmalı. |
 | Data Safety | Taslak hazır | `outputs/data-safety-cevap-taslagi.md`; Play Console formu yine hesap sahibi tarafından gönderilmeli. |
-| Gizlilik politikası | Eksik | `docs/privacy-policy/index.html` hazır; `[ ... ]` yer tutucuları doldurulup HTTPS URL'de yayınlanmalı. |
+| Gizlilik politikası | Tamam | Uygulamadaki `https://ttaskesen.github.io/BlokYik/` adresi ve doğrudan `/privacy-policy/` adresi 30 Ağustos 2026 tarihinde HTTPS 200 döndürdü. |
 | Hedef kitle / içerik derecelendirmesi | Kullanıcı kararı gerekli | Play Console anketleri gerçek hedef kitleye göre doldurulmalı. |
 | Mağaza metinleri | Tamam | `outputs/play-store-metinleri-tr.md`. |
 | Görsel varlıklar | Kısmen tamam | Ölçüler uygun; ekran görüntüleri otomatik üretilmiş, gerçek Android cihaz QA'sı yapılmadı. |
-| Test | Kısmen tamam | Headless testlerin işlevsel kontrolleri başarılı; kapanışta Godot ses kaynakları için 6 ObjectDB / 2 resource uyarısı görülüyor. Android cihaz testi ayrıca gerekli. |
+| Test | Kısmen tamam | Genişletilmiş headless regresyon paketi başarılı ve beş ardışık kapanışta ses/ObjectDB sızıntı uyarısı görülmedi. Fiziksel Android cihaz testi ayrıca gerekli. |
 | Yeni kişisel hesap kapalı testi | Hesaba bağlı | Hesap 13 Kasım 2023 sonrası açıldıysa 12 testçi ve 14 gün kapalı test gerekir. |
 | Marka / isim hakları | Kullanıcı kararı gerekli | Uygulama adı `Blok Yık` olarak değiştirildi; yeni ad ve ikonun başka bir marka ile karışmadığı yine kontrol edilmeli. |
 
@@ -31,9 +32,12 @@ Kontrol kapsamı: kaynak kodu, `project.godot`, mevcut mağaza varlıkları ve o
 - `project.godot` ağ izni, reklam veya üçüncü taraf SDK tanımlamıyor.
 - Dosya erişimi `user://` altındaki yüksek skor, ayarlar ve devam kaydıyla sınırlı.
 - Projede kullanıcı hesabı, bulut kayıt, satın alma veya reklam akışı yok.
-- Android manifesti ve export preset henüz üretilmediği için son izin kontrolü AAB export sonrasında yapılmalı.
-- Yerel makinede Android SDK API 36 ve Godot 4.7 export şablonları mevcut; JDK 17 yerine JDK 25 seçili. Godot Android rehberi uyumluluk için JDK 17 öneriyor; export öncesi JDK 17 seçilmeli.
-- Test runner `Tüm Blok Yık kontrolleri başarılı.` yazdırıyor; ancak çıkışta Godot ses sunucusu kaynakları için `6 ObjectDB instances were leaked` ve `2 resources still in use` uyarısı yeniden gözlendi. Bu, oyun akış testlerini bozmadı fakat yayın öncesi ayrı bir ses yaşam döngüsü incelemesi olarak açık kalmalı.
+- Android export preset AAB, min SDK 24, target SDK 36, ARMv7 ve ARM64 için yapılandırılmıştır.
+- Release betiği JDK 17 yolunu açıkça kullanır; sürüm adını preset'ten okur ve mevcut AAB'nin üzerine yazmadan durur.
+- Mevcut AAB 52.886.955 bayttır. İmza doğrulaması başarılıdır; AAB manifestindeki paket ve sürüm adı güncel preset ile eşleşir.
+- Mevcut AAB bu dosyadaki 30 Ağustos kod düzeltmelerinden önce üretildi. Yeni yayın adayı oluşturulmadan önce sürüm/versionCode kararı verilmeli, yeni signed AAB üretilmeli ve fiziksel Android testinden geçirilmelidir.
+- Bu görevde release üretimi, imzalama veya Play Console işlemi yapılmadı. Daha önceki Console yükleme durumu burada yeniden doğrulanmış sayılmaz.
+- Test runner `Tüm Blok Yık kontrolleri başarılı.` yazdırdı. Beş ardışık standart headless çalıştırmada `AudioStreamPlaybackWAV`, `AudioStreamWAV`, `ObjectDB instances were leaked` veya `resources still in use at exit` uyarısı görülmedi.
 
 ## Görsel varlık envanteri
 

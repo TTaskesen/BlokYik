@@ -16,8 +16,11 @@ var oynatici: AudioStreamPlayer
 var muzik_oynatici: AudioStreamPlayer
 var yuklu_sesler := {}
 var muzik_stream
+var sessiz_surucude_calismayi_zorla := false
+var _kapanis_basladi := false
 
 func _ready() -> void:
+	get_tree().auto_accept_quit = false
 	add_to_group("ses_yoneticisi")
 	oynatici = AudioStreamPlayer.new()
 	add_child(oynatici)
@@ -36,8 +39,12 @@ func ayarları_uygula() -> void:
 		muzik_oynatici.volume_db = linear_to_db(maxf(ayar_yoneticisi.muzik_seviyesi, 0.001))
 	if not efektler_acik and oynatici:
 		oynatici.stop()
-	if muzik_acik:
-		muzik_baslat()
+	if muzik_acik and ses_cikisi_kullanilabilir_mi():
+		# Ayarlar veya slider tekrar uygulandığında çalan müziğin konumunu koru.
+		if muzik_oynatici:
+			muzik_oynatici.stream_paused = false
+			if not muzik_oynatici.playing:
+				muzik_baslat()
 	else:
 		muzik_durdur()
 
@@ -65,13 +72,13 @@ func tema_degistir(tema_no: int) -> void:
 	var poz = muzik_oynatici.get_playback_position() if muzik_oynatici.playing else 0.0
 	muzik_oynatici.stream = yeni_stream
 	muzik_stream = yeni_stream
-	if muzik_acik:
+	if muzik_acik and ses_cikisi_kullanilabilir_mi():
 		muzik_oynatici.play()
 		muzik_oynatici.seek(poz)
 
 
 func efekt_cal(efekt_adi: String) -> void:
-	if not efektler_acik:
+	if not efektler_acik or not ses_cikisi_kullanilabilir_mi():
 		return
 	var frekans := 440.0
 	var sure := 0.08
@@ -89,21 +96,45 @@ func efekt_cal(efekt_adi: String) -> void:
 	var ses = yuklu_sesler.get(efekt_adi)
 	if ses == null:
 		ses = ses_olustur(frekans, sure)
+		yuklu_sesler[efekt_adi] = ses
 	oynatici.stream = ses
 	oynatici.play()
 
 func _exit_tree() -> void:
-	# Autoload kapanırken oynatıcılar ses akışlarını ve playback nesnelerini
-	# referanslamaya devam etmesin.
+	kapanisa_hazirla()
+
+func kapanisa_hazirla() -> void:
+	if _kapanis_basladi:
+		return
+	_kapanis_basladi = true
+	# AudioServer kapanmadan önce stream ve playback sahiplerini eşzamanlı bırak.
 	if oynatici:
 		oynatici.stop()
 		oynatici.stream = null
+		if is_instance_valid(oynatici):
+			oynatici.free()
+		oynatici = null
 	if muzik_oynatici:
 		muzik_oynatici.stop()
 		muzik_oynatici.stream_paused = false
 		muzik_oynatici.stream = null
+		if is_instance_valid(muzik_oynatici):
+			muzik_oynatici.free()
+		muzik_oynatici = null
 	yuklu_sesler.clear()
 	muzik_stream = null
+
+func _notification(ne: int) -> void:
+	if ne == NOTIFICATION_WM_CLOSE_REQUEST and not _kapanis_basladi:
+		uygulamadan_cik()
+
+func uygulamadan_cik() -> void:
+	kapanisa_hazirla()
+	call_deferred("_temiz_kapanisi_tamamla")
+
+func _temiz_kapanisi_tamamla() -> void:
+	await get_tree().create_timer(0.1).timeout
+	get_tree().quit()
 
 func seviye_guncelle() -> void:
 	if muzik_oynatici:
@@ -111,15 +142,20 @@ func seviye_guncelle() -> void:
 		muzik_oynatici.volume_db = linear_to_db(seviye)
 
 func muzik_baslat() -> void:
-	if not muzik_acik:
+	if not muzik_acik or not ses_cikisi_kullanilabilir_mi():
 		return
-	if muzik_oynatici and muzik_oynatici.stream:
+	if muzik_oynatici and muzik_oynatici.stream and not muzik_oynatici.playing:
 		muzik_oynatici.stream_paused = false
 		muzik_oynatici.play()
 
 func muzik_durdur() -> void:
 	if muzik_oynatici:
 		muzik_oynatici.stop()
+
+func ses_cikisi_kullanilabilir_mi() -> bool:
+	# Headless çalıştırmada Dummy sürücü gerçek ses üretmez; playback başlatmamak
+	# kapanış sahipliğini gerçek cihaz davranışından ayırır. Ses regresyon testi bunu zorlar.
+	return AudioServer.get_driver_name() != "Dummy" or sessiz_surucude_calismayi_zorla
 
 func ses_olustur(frekans: float, sure: float) -> AudioStreamWAV:
 	var ornek_sayisi := int(ORNEKLEME_HIZI * sure)

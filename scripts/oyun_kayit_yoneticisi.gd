@@ -13,10 +13,6 @@ func _init(yeni_kayit_yolu: String = KAYIT_YOLU) -> void:
 func kaydet(tahta: OyunTahtasi, skor_yoneticisi: SkorYoneticisi, aktif_parca: BlokParcasi, sonraki_parca: BlokParcasi, dusme_araligi: float, _parca_uretici: ParcaUretici) -> bool:
 	if tahta == null or skor_yoneticisi == null or aktif_parca == null or sonraki_parca == null:
 		return false
-	var dosya := FileAccess.open(kayit_yolu, FileAccess.WRITE)
-	if dosya == null:
-		return false
-	
 	var data = {
 		"surum": SURUM,
 		"durum": "devam",
@@ -54,8 +50,9 @@ func kaydet(tahta: OyunTahtasi, skor_yoneticisi: SkorYoneticisi, aktif_parca: Bl
 			"kalip": sonraki_parca.kalip
 		}
 	
-	dosya.store_string(JSON.stringify(data))
-	dosya.close()
+	if not _atomik_kaydet(data):
+		son_kayit_mesaji = "Kayıt yazılamadı; önceki geçerli kayıt korundu."
+		return false
 	son_kayit_mesaji = "Kaydedilmiş oyun devam etmeye hazır."
 	return true
 
@@ -68,35 +65,139 @@ func kayit_var_mi() -> bool:
 
 func kayit_durumu() -> Dictionary:
 	var sonuc := {"gecerli": false, "mesaj": "Kaydedilmiş oyun yok.", "data": {}}
-	if not FileAccess.file_exists(kayit_yolu):
+	var ana_sonuc := _dosyadaki_kaydi_oku(kayit_yolu)
+	if ana_sonuc.gecerli:
+		_gecici_artiklari_temizle()
+		son_kayit_mesaji = "Kaydedilmiş oyun devam etmeye hazır."
+		return {"gecerli": true, "mesaj": son_kayit_mesaji, "data": ana_sonuc.data}
+	var yedek_sonuc := _dosyadaki_kaydi_oku(_yedek_yolu())
+	if yedek_sonuc.gecerli:
+		_dosyayi_icerikten_geri_yukle(_yedek_yolu(), kayit_yolu)
+		_gecici_artiklari_temizle()
+		son_kayit_mesaji = "Bozuk kayıt güvenli yedekten kurtarıldı."
+		return {"gecerli": true, "mesaj": son_kayit_mesaji, "data": yedek_sonuc.data}
+	var gecici_sonuc := _dosyadaki_kaydi_oku(_gecici_yol())
+	if gecici_sonuc.gecerli:
+		_dosyayi_degistir(_gecici_yol(), kayit_yolu)
+		son_kayit_mesaji = "Yarım kalan kayıt güvenli biçimde tamamlandı."
+		return {"gecerli": true, "mesaj": son_kayit_mesaji, "data": gecici_sonuc.data}
+	if not FileAccess.file_exists(kayit_yolu) and not FileAccess.file_exists(_yedek_yolu()) and not FileAccess.file_exists(_gecici_yol()):
 		son_kayit_mesaji = sonuc.mesaj
 		return sonuc
-	var dosya := FileAccess.open(kayit_yolu, FileAccess.READ)
-	if dosya == null:
-		return _gecersiz_kaydi_isle("Kayıt uyumsuz veya bozuk; silindi.")
-	var icerik := dosya.get_as_text()
-	dosya.close()
-	var json_parser := JSON.new()
-	if json_parser.parse(icerik) != OK:
-		return _gecersiz_kaydi_isle("Kayıt uyumsuz veya bozuk; silindi.")
-	var json = json_parser.data
-	if typeof(json) != TYPE_DICTIONARY:
-		return _gecersiz_kaydi_isle("Kayıt uyumsuz veya bozuk; silindi.")
-	var dogrulama_mesaji := _kaydi_dogrula(json)
-	if not dogrulama_mesaji.is_empty():
-		return _gecersiz_kaydi_isle(dogrulama_mesaji)
-	son_kayit_mesaji = "Kaydedilmiş oyun devam etmeye hazır."
-	return {"gecerli": true, "mesaj": son_kayit_mesaji, "data": json}
+	var hata_mesaji: String = ana_sonuc.mesaj if not ana_sonuc.mesaj.is_empty() else "Kayıt uyumsuz veya bozuk; silindi."
+	return _gecersiz_kaydi_isle(hata_mesaji)
 
 func kaydi_sil() -> void:
-	if FileAccess.file_exists(kayit_yolu):
-		DirAccess.remove_absolute(kayit_yolu)
+	for yol in [kayit_yolu, _gecici_yol(), _yedek_yolu(), _eski_yol(), _yedek_gecici_yolu()]:
+		_yolu_sil(yol)
 	son_kayit_mesaji = "Kaydedilmiş oyun yok."
 
 func _gecersiz_kaydi_isle(mesaj: String) -> Dictionary:
 	kaydi_sil()
 	son_kayit_mesaji = mesaj
 	return {"gecerli": false, "mesaj": mesaj, "data": {}}
+
+func _atomik_kaydet(data: Dictionary) -> bool:
+	var gecici_yol := _gecici_yol()
+	if not _json_dosyasi_yaz(gecici_yol, data):
+		return false
+	var gecici_sonuc := _dosyadaki_kaydi_oku(gecici_yol)
+	if not gecici_sonuc.gecerli:
+		DirAccess.remove_absolute(gecici_yol)
+		return false
+	var mevcut_sonuc := _dosyadaki_kaydi_oku(kayit_yolu)
+	if mevcut_sonuc.gecerli and not _yedegi_guncelle(mevcut_sonuc.data):
+		DirAccess.remove_absolute(gecici_yol)
+		return false
+	if not _dosyayi_degistir(gecici_yol, kayit_yolu):
+		return false
+	return true
+
+func _yedegi_guncelle(data: Dictionary) -> bool:
+	var yedek_gecici := _yedek_gecici_yolu()
+	if not _json_dosyasi_yaz(yedek_gecici, data):
+		return false
+	if not _dosyadaki_kaydi_oku(yedek_gecici).gecerli:
+		DirAccess.remove_absolute(yedek_gecici)
+		return false
+	return _dosyayi_degistir(yedek_gecici, _yedek_yolu())
+
+func _json_dosyasi_yaz(yol: String, data: Dictionary) -> bool:
+	var dosya := FileAccess.open(yol, FileAccess.WRITE)
+	if dosya == null:
+		return false
+	dosya.store_string(JSON.stringify(data))
+	dosya.flush()
+	dosya.close()
+	return true
+
+func _dosyadaki_kaydi_oku(yol: String) -> Dictionary:
+	if not FileAccess.file_exists(yol):
+		return {"gecerli": false, "mesaj": "", "data": {}}
+	var dosya := FileAccess.open(yol, FileAccess.READ)
+	if dosya == null:
+		return {"gecerli": false, "mesaj": "Kayıt uyumsuz veya bozuk; silindi.", "data": {}}
+	var icerik := dosya.get_as_text()
+	dosya.close()
+	var json_parser := JSON.new()
+	if json_parser.parse(icerik) != OK or typeof(json_parser.data) != TYPE_DICTIONARY:
+		return {"gecerli": false, "mesaj": "Kayıt uyumsuz veya bozuk; silindi.", "data": {}}
+	var dogrulama_mesaji := _kaydi_dogrula(json_parser.data)
+	return {"gecerli": dogrulama_mesaji.is_empty(), "mesaj": dogrulama_mesaji, "data": json_parser.data if dogrulama_mesaji.is_empty() else {}}
+
+func _dosyayi_icerikten_geri_yukle(kaynak: String, hedef: String) -> bool:
+	var kaynak_dosyasi := FileAccess.open(kaynak, FileAccess.READ)
+	if kaynak_dosyasi == null:
+		return false
+	var icerik := kaynak_dosyasi.get_as_text()
+	kaynak_dosyasi.close()
+	var gecici := _gecici_yol()
+	var gecici_dosya := FileAccess.open(gecici, FileAccess.WRITE)
+	if gecici_dosya == null:
+		return false
+	gecici_dosya.store_string(icerik)
+	gecici_dosya.flush()
+	gecici_dosya.close()
+	return _dosyayi_degistir(gecici, hedef)
+
+func _dosyayi_degistir(kaynak: String, hedef: String) -> bool:
+	if DirAccess.rename_absolute(kaynak, hedef) == OK:
+		return true
+	var eski := _eski_yol()
+	if FileAccess.file_exists(eski):
+		DirAccess.remove_absolute(eski)
+	var hedef_tasindi := false
+	if FileAccess.file_exists(hedef):
+		if DirAccess.rename_absolute(hedef, eski) != OK:
+			return false
+		hedef_tasindi = true
+	if DirAccess.rename_absolute(kaynak, hedef) == OK:
+		if hedef_tasindi and FileAccess.file_exists(eski):
+			DirAccess.remove_absolute(eski)
+		return true
+	if hedef_tasindi:
+		DirAccess.rename_absolute(eski, hedef)
+	return false
+
+func _gecici_artiklari_temizle() -> void:
+	for yol in [_gecici_yol(), _eski_yol(), _yedek_gecici_yolu()]:
+		_yolu_sil(yol)
+
+func _yolu_sil(yol: String) -> void:
+	if FileAccess.file_exists(yol) or DirAccess.dir_exists_absolute(yol):
+		DirAccess.remove_absolute(yol)
+
+func _gecici_yol() -> String:
+	return kayit_yolu + ".tmp"
+
+func _yedek_yolu() -> String:
+	return kayit_yolu + ".bak"
+
+func _eski_yol() -> String:
+	return kayit_yolu + ".old"
+
+func _yedek_gecici_yolu() -> String:
+	return kayit_yolu + ".bak.tmp"
 
 func _kaydi_dogrula(data: Dictionary) -> String:
 	if not data.has("surum") or not _tam_sayi_mi(data.surum) or int(data.surum) != SURUM:

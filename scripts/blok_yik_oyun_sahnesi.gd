@@ -61,10 +61,10 @@ func _ready() -> void:
 	if not kayitli_oyun_yuklenecek or not oyunu_yukle():
 		yeni_oyunu_baslat()
 	ses_toggle_butonu.text = "Efekt: Açık" if ses_yoneticisi.efektler_acik else "Efekt: Kapalı"
-	$Arayuz/Sol.pressed.connect(func(): komutu_uygula("sol"); focusu_birak())
-	$Arayuz/Sag.pressed.connect(func(): komutu_uygula("sag"); focusu_birak())
-	$Arayuz/Asagi.pressed.connect(func(): komutu_uygula("asagi"); focusu_birak())
-	$Arayuz/Birak.pressed.connect(func(): aninda_indir(); focusu_birak())
+	$Arayuz/Sol.pressed.connect(func(): oyuncu_komutunu_uygula("sol"); focusu_birak())
+	$Arayuz/Sag.pressed.connect(func(): oyuncu_komutunu_uygula("sag"); focusu_birak())
+	$Arayuz/Asagi.pressed.connect(func(): oyuncu_komutunu_uygula("asagi"); focusu_birak())
+	$Arayuz/Birak.pressed.connect(func(): oyuncu_komutunu_uygula("birak"); focusu_birak())
 	$Arayuz/Duraklat.pressed.connect(duraklatmayi_degistir)
 	$Arayuz/OyunBitti/Icerik/YenidenBaslat.pressed.connect(func(): yeniden_baslat(); focusu_birak())
 	$Arayuz/OyunBitti/Icerik/MenuyeDon.pressed.connect(func(): menuye_don(); focusu_birak())
@@ -73,7 +73,7 @@ func _ready() -> void:
 	duraklat_menu.visible = false
 	seviye_gecis_etiketi.visible = false
 	seviye_gecis_zamanlayicisi.timeout.connect(func(): seviye_gecis_etiketi.visible = false)
-	$Arayuz/Dondur.pressed.connect(func(): komutu_uygula("dondur"); focusu_birak())
+	$Arayuz/Dondur.pressed.connect(func(): oyuncu_komutunu_uygula("dondur"); focusu_birak())
 	$Arayuz/DuraklatMenu/DuraklatIcerik/DevamEtBtn.pressed.connect(duraklatmayi_degistir)
 	$Arayuz/DuraklatMenu/DuraklatIcerik/YenidenBaslatBtn.pressed.connect(func(): yeniden_baslat(); focusu_birak())
 	$Arayuz/DuraklatMenu/DuraklatIcerik/AnaMenuBtn.pressed.connect(func(): menuye_don(); focusu_birak())
@@ -103,9 +103,9 @@ func _unhandled_input(olay: InputEvent) -> void:
 		return
 	# Arayüz butonlarının işlediği dokunuşlar buraya ulaşmaz.
 	# Böylece bir butona basmak parçayı yanlışlıkla döndürmez.
-	if not oyun_aktif:
-		return
 	if olay is InputEventScreenTouch:
+		if not oyuncu_girisi_kabul_ediliyor_mu():
+			return
 		if olay.pressed:
 			dokunma_baslangici = olay.position
 		else:
@@ -115,16 +115,22 @@ func _unhandled_input(olay: InputEvent) -> void:
 	if komut == "duraklat":
 		duraklatmayi_degistir()
 		return
-	if oyun_duraklatildi:
+	if komut != "":
+		oyuncu_komutunu_uygula(komut)
+
+func oyuncu_girisi_kabul_ediliyor_mu() -> bool:
+	return oyun_aktif and not oyun_duraklatildi and not satir_silme_animasyonu_aktif and aktif_parca != null
+
+func oyuncu_komutunu_uygula(komut: String) -> void:
+	if not oyuncu_girisi_kabul_ediliyor_mu():
 		return
 	if komut == "birak":
 		aninda_indir()
-		return
-	if komut != "":
+	elif komut in ["sol", "sag", "asagi", "dondur"]:
 		komutu_uygula(komut)
 
 func komutu_uygula(komut: String) -> void:
-	if not oyun_aktif or oyun_duraklatildi or satir_silme_animasyonu_aktif:
+	if not oyuncu_girisi_kabul_ediliyor_mu():
 		return
 	match komut:
 		"sol": aktif_parca.konum.x -= 1
@@ -142,7 +148,7 @@ func komutu_uygula(komut: String) -> void:
 	queue_redraw()
 
 func aninda_indir() -> void:
-	if not oyun_aktif or oyun_duraklatildi:
+	if not oyuncu_girisi_kabul_ediliyor_mu():
 		return
 	var mesafe := 0
 	while true:
@@ -230,6 +236,8 @@ func kilitlenmis_parcayi_isle(silinen_satir: int) -> void:
 		oyunu_sonlandir(true)
 	elif seviye_sonucu.ana_level_degisimi:
 		level_ayarini_uygula()
+		# Yeni bölüm tahtası ve parçaları oluşturulduktan hemen sonra ilerlemeyi kalıcılaştır.
+		oyunu_kaydet()
 	elif tahta.oyun_bitti_mi():
 		oyunu_sonlandir(false)
 	else:
@@ -320,13 +328,15 @@ func _exit_tree() -> void:
 		oyunu_kaydet()
 
 func dokunmatik_komutu_uygula(bitis_konumu: Vector2) -> void:
+	if not oyuncu_girisi_kabul_ediliyor_mu():
+		return
 	var hareket := bitis_konumu - dokunma_baslangici
 	if hareket.length() < 24.0:
-		komutu_uygula("dondur")
+		oyuncu_komutunu_uygula("dondur")
 	elif abs(hareket.x) > abs(hareket.y):
-		komutu_uygula("sag" if hareket.x > 0 else "sol")
+		oyuncu_komutunu_uygula("sag" if hareket.x > 0 else "sol")
 	elif hareket.y > 0:
-		komutu_uygula("asagi")
+		oyuncu_komutunu_uygula("asagi")
 
 func mobil_oyun_yerlesimini_uygula(zorla := false) -> void:
 	if not zorla and not mobil_platform_mu():

@@ -1,16 +1,26 @@
 # Blok Yık Android App Bundle export adımları
 
-Bu proje için AAB üretimi, kalıcı paket adı ve release imza bilgisi kullanıcı kararı gerektirdiği için otomatik yapılmadı.
+Güncel Android export preset'i hazırdır. Bu belge hazırlık adımları ile doğrulanmış yayın kanıtını birbirinden ayırır; bu görevde yeni AAB üretilmemiş veya imzalanmamıştır.
+
+## Doğrulanmış mevcut yapılandırma
+
+- Paket: `com.taskesen.blokyik`
+- Version name: `0.1.1`
+- Version code: `2`
+- Format: Android App Bundle
+- Min SDK: 24
+- Target SDK: 36
+- Mimariler: ARMv7 ve ARM64
 
 ## Godot içinde
 
-1. `Project > Export > Add... > Android` ile Android export preset oluştur.
-2. Kalıcı bir package/application ID seç. Örnek vermek gerekirse kendi alan adının ters çevrilmiş biçimini kullan; `com.example...` kullanma.
-3. Version name olarak `0.1.0`, version code olarak `1` ile başla; her güncellemede version code artır.
-4. Export formatını `AAB` seç.
-5. Target SDK’yı Android 16 / API 36 veya üzeri yap. 31 Ağustos 2026 itibarıyla Google Play yeni uygulama ve güncellemelerde API 36+ istiyor.
-6. Release keystore’u Godot Export ayarlarına bağla ve `Export With Debug` seçeneğini kapat.
-7. AAB’yi oluşturup Play Console’un App Bundle Explorer’ında incele.
+1. `export_presets.cfg` içindeki Android preset'i aç ve paket/sürüm değerlerini kontrol et.
+2. Her yeni Play yüklemesinden önce version code'u kullanıcı kararıyla artır; betik sürümü kendiliğinden artırmaz.
+3. Release keystore'u güvenli konumdan bağla; parola veya anahtar dosyasını repoya ekleme.
+4. `tools/build_release_aab.sh --print-output` ile üretilecek sürüm ve yolu parola istemeden kontrol et.
+5. Hedef dosya zaten varsa betik üzerine yazmaz; eski dosyayı kullanıcı kararı olmadan silme veya taşıma.
+6. Yeni signed AAB'yi fiziksel Android cihazda kurulum, dikey ekran, safe area, dokunma, ses ve kayıt akışlarıyla doğrula.
+7. Yalnız doğrulanmış yeni AAB'yi Play Console App Bundle Explorer'a yükle.
 
 ## Bu makinedeki hazır bileşenler
 
@@ -19,10 +29,21 @@ Bu proje için AAB üretimi, kalıcı paket adı ve release imza bilgisi kullan�
 - Godot Android release export template mevcut
 - JDK 17 mevcut; Android export öncesi Godot Editor Settings’te JDK 17 seçilmeli.
 
-## Bilinçli olarak yapılmayanlar
+## Mevcut AAB incelemesi
 
-- Paket adı uydurulmadı.
-- Release keystore oluşturulmadı.
+- Dosya: `/Users/turguttaskesen/Desktop/Yayına Hazır Dosyalar/Blokyık/BlokYik-v0.1.1-release.aab`
+- Boyut: 52.886.955 bayt
+- Değiştirilme zamanı: 29 Ağustos 2026 21:29:38 +03:00
+- Manifestte görülen paket/sürüm: `com.taskesen.blokyik` / `0.1.1`
+- `jarsigner` sonucu: imza doğrulandı; imzalayan `CN=Blok Yık Upload Key`
+- Durum: Bu AAB 30 Ağustos kod ve test düzeltmelerinden önce üretildiği için güncel kaynakla aynı değildir ve yeni yayın adayı olarak kullanılmamalıdır.
+
+## Bu görevde bilinçli olarak yapılmayanlar
+
+- Sürüm veya version code artırılmadı.
+- Release keystore oluşturulmadı ya da değiştirilmedi.
 - Keystore parolası dosyaya yazılmadı.
-- AAB üretilmedi; çünkü export preset ve imza bilgileri yok.
-- Play Console’a uygulama oluşturulmadı veya dosya yüklenmedi.
+- Yeni AAB/APK üretilmedi veya imzalanmadı.
+- Mevcut AAB silinmedi veya üzerine yazılmadı.
+- Play Console'a dosya yüklenmedi ve mevcut gönderim durumu değiştirilmedi.
+- Fiziksel Android cihaz testi yapılmadı; yayın öncesinde açık manuel kontroldür.

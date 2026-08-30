@@ -21,110 +21,118 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.04, 0.05, 0.09, 1)
 
-[node name="Panel" type="VBoxContainer" parent="." unique_id=1545942746]
+[node name="GuvenliAlan" type="MarginContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -210.0
-offset_top = -250.0
-offset_right = 210.0
-offset_bottom = 250.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="IcerikKaydirici" type="ScrollContainer" parent="GuvenliAlan"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Ortala" type="CenterContainer" parent="GuvenliAlan/IcerikKaydirici"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Panel" type="VBoxContainer" parent="GuvenliAlan/IcerikKaydirici/Ortala" unique_id=1545942746]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
 theme_override_constants/separation = 22
 
-[node name="Icon" type="TextureRect" parent="Panel" unique_id=709188757]
+[node name="Icon" type="TextureRect" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=709188757]
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 texture = ExtResource("2")
+expand_mode = 3
 stretch_mode = 3
 
-[node name="Baslik" type="Label" parent="Panel" unique_id=1078363240]
+[node name="Baslik" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1078363240]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.22, 0.3, 1)
 theme_override_font_sizes/font_size = 64
 text = "BLOK YIK"
 horizontal_alignment = 1
 
-[node name="Basla" type="Button" parent="Panel" unique_id=1788764221]
+[node name="Basla" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1788764221]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Yeni Oyuna Başla"
 
-[node name="NasilOynanir" type="Button" parent="Panel" unique_id=1752332146]
+[node name="NasilOynanir" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1752332146]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Nasıl Oynanır"
 
-[node name="Ayarlar" type="Button" parent="Panel" unique_id=1573895914]
+[node name="Ayarlar" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1573895914]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Ayarlar"
 
-[node name="DevamEt" type="Button" parent="Panel" unique_id=1624829373]
+[node name="DevamEt" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1624829373]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Devam Et"
 
-[node name="KayitDurumu" type="Label" parent="Panel" unique_id=654967315]
+[node name="KayitDurumu" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=654967315]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.72, 0.3, 1)
 theme_override_font_sizes/font_size = 15
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="YuksekSkorlar" type="Button" parent="Panel" unique_id=443416971]
+[node name="YuksekSkorlar" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=443416971]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Yüksek Skorlar"
 
-[node name="Hakkinda" type="Button" parent="Panel" unique_id=1428781851]
+[node name="Hakkinda" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1428781851]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Hakkında"
 
-[node name="Cikis" type="Button" parent="Panel" unique_id=916455871]
+[node name="Cikis" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=916455871]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Çıkış"
 
-[node name="AyarPaneli" type="VBoxContainer" parent="Panel" unique_id=1505461865]
+[node name="AyarPaneli" type="VBoxContainer" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1505461865]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Baslik" type="Label" parent="Panel/AyarPaneli" unique_id=336153339]
+[node name="Baslik" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel/AyarPaneli" unique_id=336153339]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "AYARLAR"
 horizontal_alignment = 1
 
-[node name="SesAcik" type="CheckButton" parent="Panel/AyarPaneli" unique_id=2097830559]
+[node name="SesAcik" type="CheckButton" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel/AyarPaneli" unique_id=2097830559]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Ses efektleri"
 
-[node name="MuzikAcik" type="CheckButton" parent="Panel/AyarPaneli" unique_id=1226934606]
+[node name="MuzikAcik" type="CheckButton" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel/AyarPaneli" unique_id=1226934606]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Müzik"
 
-[node name="MuzikSeviye" type="HSlider" parent="Panel/AyarPaneli" unique_id=1904743053]
+[node name="MuzikSeviye" type="HSlider" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel/AyarPaneli" unique_id=1904743053]
 layout_mode = 2
 max_value = 1.0
 step = 0.01
 value = 0.7
 
-[node name="KontrollerBilgi" type="Label" parent="Panel/AyarPaneli" unique_id=1320251825]
+[node name="KontrollerBilgi" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel/AyarPaneli" unique_id=1320251825]
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "W: Döndür • A/D: Sol/Sağ • S: Hızlı İndir
 Boşluk: Bırak • P: Duraklat"
 horizontal_alignment = 1
 
-[node name="Bilgi" type="Label" parent="Panel" unique_id=1213839153]
+[node name="Bilgi" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1213839153]
 visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
@@ -173,10 +181,10 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Vazgeç"
 
-[connection signal="pressed" from="Panel/Basla" to="." method="_on_basla_pressed"]
-[connection signal="pressed" from="Panel/NasilOynanir" to="." method="_on_nasil_oynanir_pressed"]
-[connection signal="pressed" from="Panel/Ayarlar" to="." method="_on_ayarlar_pressed"]
-[connection signal="pressed" from="Panel/DevamEt" to="." method="_on_devam_et_pressed"]
-[connection signal="pressed" from="Panel/YuksekSkorlar" to="." method="_on_yuksek_skorlar_pressed"]
-[connection signal="pressed" from="Panel/Hakkinda" to="." method="_on_hakkinda_pressed"]
-[connection signal="pressed" from="Panel/Cikis" to="." method="_on_cikis_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/Basla" to="." method="_on_basla_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/NasilOynanir" to="." method="_on_nasil_oynanir_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/Ayarlar" to="." method="_on_ayarlar_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/DevamEt" to="." method="_on_devam_et_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/YuksekSkorlar" to="." method="_on_yuksek_skorlar_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/Hakkinda" to="." method="_on_hakkinda_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/Cikis" to="." method="_on_cikis_pressed"]

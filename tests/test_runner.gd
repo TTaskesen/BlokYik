@@ -28,9 +28,14 @@ func kontrol(kosul: bool, mesaj: String) -> void:
 		basarisizlik_sayisi += 1
 		push_error("BAŞARISIZ: " + mesaj)
 
+func test_kayit_artiklarini_temizle() -> void:
+	for yol in [TEST_KAYIT_YOLU, TEST_KAYIT_YOLU + ".tmp", TEST_KAYIT_YOLU + ".bak", TEST_KAYIT_YOLU + ".old", TEST_KAYIT_YOLU + ".bak.tmp"]:
+		if FileAccess.file_exists(yol) or DirAccess.dir_exists_absolute(yol):
+			DirAccess.remove_absolute(yol)
+
 func testleri_calistir() -> void:
 	var kayit_yoneticisi := OyunKayitYoneticisi.new(TEST_KAYIT_YOLU)
-	DirAccess.remove_absolute(TEST_KAYIT_YOLU)
+	test_kayit_artiklarini_temizle()
 	DirAccess.remove_absolute(TEST_AYAR_YOLU)
 	DirAccess.remove_absolute(TEST_ESKI_AYAR_YOLU)
 	DirAccess.remove_absolute(TEST_SKOR_YOLU)
@@ -50,6 +55,32 @@ func testleri_calistir() -> void:
 	kontrol(kayit_yoneticisi.kayit_var_mi(), "Kayıt yöneticisi yeni kaydı bulmalı.")
 	var ham_kayit := kayit_yoneticisi.yukle()
 	kontrol(ham_kayit.get("surum") == OyunKayitYoneticisi.SURUM, "Geçerli kayıtta desteklenen şema sürümü bulunmalı.")
+	kontrol(not FileAccess.file_exists(TEST_KAYIT_YOLU + ".tmp"), "Başarılı atomik kayıttan sonra geçici dosya kalmamalı.")
+	# İkinci başarılı kayıt, önceki geçerli ana kaydı doğrulanmış yedek olarak saklar.
+	kontrol(kayit_yoneticisi.kaydet(tahta, skor, aktif, sonraki, 0.25, ParcaUretici.new()), "İkinci atomik kayıt başarılı olmalı.")
+	kontrol(FileAccess.file_exists(TEST_KAYIT_YOLU + ".bak"), "Önceki geçerli kayıt yedeklenmeli.")
+	# Geçersiz yarım dosya, geçerli ana kaydın önüne geçmemeli.
+	var yarim_dosya := FileAccess.open(TEST_KAYIT_YOLU + ".tmp", FileAccess.WRITE)
+	yarim_dosya.store_string("yarım-json")
+	yarim_dosya.close()
+	kontrol(kayit_yoneticisi.yukle().get("skor") == 345, "Geçersiz geçici dosya geçerli ana kaydı bozmamalı.")
+	# Ana kayıt bozulursa doğrulanmış yedek otomatik kullanılmalı ve ana dosya geri kurulmalı.
+	var ana_dosya := FileAccess.open(TEST_KAYIT_YOLU, FileAccess.WRITE)
+	ana_dosya.store_string("bozuk-ana")
+	ana_dosya.close()
+	var kurtarilan_kayit := kayit_yoneticisi.yukle()
+	kontrol(kurtarilan_kayit.get("skor") == 345, "Bozuk ana kayıt geçerli yedekten kurtarılmalı.")
+	kontrol(kayit_yoneticisi.kayit_var_mi(), "Yedekten kurtarılan ana kayıt yeniden geçerli olmalı.")
+	# Geçici hedefe yazılamazsa önceki geçerli ana kayıt korunmalı.
+	DirAccess.make_dir_absolute(TEST_KAYIT_YOLU + ".tmp")
+	var onceki_icerik_dosyasi := FileAccess.open(TEST_KAYIT_YOLU, FileAccess.READ)
+	var onceki_icerik := onceki_icerik_dosyasi.get_as_text()
+	onceki_icerik_dosyasi.close()
+	kontrol(not kayit_yoneticisi.kaydet(tahta, skor, aktif, sonraki, 0.25, ParcaUretici.new()), "Yazılamayan geçici hedef açık başarısızlık döndürmeli.")
+	var korunan_icerik_dosyasi := FileAccess.open(TEST_KAYIT_YOLU, FileAccess.READ)
+	kontrol(korunan_icerik_dosyasi.get_as_text() == onceki_icerik, "Kayıt yazımı başarısız olduğunda önceki ana kayıt korunmalı.")
+	korunan_icerik_dosyasi.close()
+	DirAccess.remove_absolute(TEST_KAYIT_YOLU + ".tmp")
 
 	var menu = MENU_SAHNESI.instantiate()
 	menu.kayit_yolu = TEST_KAYIT_YOLU
@@ -130,6 +161,40 @@ func testleri_calistir() -> void:
 	kontrol(oyun.tahta.kilitli_hucreler.is_empty(), "Eski satır animasyonu yeniden başlatılan oyunun tahtasını değiştirmemeli.")
 	kontrol(not kayit_yoneticisi.kayit_var_mi(), "Yeni oyun eski devam kaydını temizlemeli.")
 
+	# Satır silme animasyonunda tüm oyuncu girişleri aynı kapıdan engellenmelidir.
+	var animasyon_tahtasi := OyunTahtasi.new(10, 20)
+	for x in 10:
+		animasyon_tahtasi.kilitli_hucreler[Vector2i(x, 19)] = Color.WHITE
+	oyun.tahta = animasyon_tahtasi
+	oyun.aktif_parca = BlokParcasi.new([["0"]], Color.GREEN)
+	oyun.aktif_parca.konum = Vector2i(4, 0)
+	oyun.sonraki_parca = BlokParcasi.new([["0"]], Color.CYAN)
+	var animasyon_onceki_konum: Vector2i = oyun.aktif_parca.konum
+	var animasyon_onceki_skor: int = oyun.skor_yoneticisi.skor
+	var animasyon_onceki_tahta: Dictionary = oyun.tahta.kilitli_hucreler.duplicate(true)
+	var animasyon_sonraki_parca: BlokParcasi = oyun.sonraki_parca
+	var animasyon_satirlari: Array[int] = [19]
+	oyun.satir_silme_animasyonunu_oynat(animasyon_satirlari)
+	oyun.oyuncu_komutunu_uygula("birak")
+	oyun.dokunma_baslangici = Vector2.ZERO
+	oyun.dokunmatik_komutu_uygula(Vector2(100, 0))
+	kontrol(oyun.aktif_parca.konum == animasyon_onceki_konum, "Animasyon sırasında kilitli/aktif parça hareket etmemeli.")
+	kontrol(oyun.skor_yoneticisi.skor == animasyon_onceki_skor, "Animasyon sırasında Bırak tek puan bile üretmemeli.")
+	kontrol(oyun.tahta.kilitli_hucreler == animasyon_onceki_tahta, "Animasyon sırasında oyuncu girişi tahtayı değiştirmemeli.")
+	await create_timer(0.45).timeout
+	kontrol(oyun.aktif_parca == animasyon_sonraki_parca, "Animasyon bitince yeni aktif parçaya geçilmeli.")
+	var yeni_parca_onceki_konum: Vector2i = oyun.aktif_parca.konum
+	oyun.oyuncu_komutunu_uygula("sol")
+	kontrol(oyun.aktif_parca.konum.x == yeni_parca_onceki_konum.x - 1, "Animasyon bitince yeni parçanın kontrolleri yeniden açılmalı.")
+
+	# Ana bölüm değişiminde yeni tahta ve ilerleme hemen kalıcılaştırılmalıdır.
+	oyun.skor_yoneticisi.ana_level = 1
+	oyun.skor_yoneticisi.alt_seviye = SkorYoneticisi.ALT_SEVIYE_SAYISI
+	oyun.skor_yoneticisi.asama_satirlari = SkorYoneticisi.ALT_SEVIYE_ICIN_SATIR - 1
+	oyun.kilitlenmis_parcayi_isle(1)
+	var bolum_gecisi_kaydi := kayit_yoneticisi.yukle()
+	kontrol(bolum_gecisi_kaydi.get("ana_level") == 2, "Ana bölüm değişikliği tamamlanır tamamlanmaz kaydedilmeli.")
+
 	# Bitmiş oyun, uygulama kapansa bile devam edilebilir bir kayıt bırakmamalı.
 	kayit_yoneticisi.kaydet(tahta, skor, aktif, sonraki, 0.25, ParcaUretici.new())
 	oyun.oyunu_sonlandir(false)
@@ -185,6 +250,17 @@ func testleri_calistir() -> void:
 	bozuk_menu.queue_free()
 	await process_frame
 
+	# Ana ve yedek aynı anda bozuksa ikisi de güvenli biçimde temizlenmelidir.
+	var cift_bozuk_ana := FileAccess.open(TEST_KAYIT_YOLU, FileAccess.WRITE)
+	cift_bozuk_ana.store_string("bozuk-ana")
+	cift_bozuk_ana.close()
+	var cift_bozuk_yedek := FileAccess.open(TEST_KAYIT_YOLU + ".bak", FileAccess.WRITE)
+	cift_bozuk_yedek.store_string("bozuk-yedek")
+	cift_bozuk_yedek.close()
+	var cift_bozuk_sonuc := kayit_yoneticisi.kayit_durumu()
+	kontrol(not cift_bozuk_sonuc.gecerli, "Ana ve yedek bozuksa kayıt oynanabilir sayılmamalı.")
+	kontrol(not FileAccess.file_exists(TEST_KAYIT_YOLU) and not FileAccess.file_exists(TEST_KAYIT_YOLU + ".bak"), "Ana ve yedek bozuksa güvenli sıfırlama ikisini de temizlemeli.")
+
 	# Yardımcı ekranlar dar, referans ve geniş görünümde yatay taşmamalı.
 	for yardimci_paket in YARDIMCI_SAHNELER:
 		var yardimci = yardimci_paket.instantiate()
@@ -201,7 +277,7 @@ func testleri_calistir() -> void:
 		yardimci.queue_free()
 		await process_frame
 
-	# Mobil ana menüde Çıkış gizlenir; geri hareketi güvenli onayı açıp kapatır.
+	# Mobil ana menü safe area içinde kalır; dar yükseklikte içerik kaydırılarak erişilebilir olur.
 	var mobil_menu = MENU_SAHNESI.instantiate()
 	mobil_menu.kayit_yolu = TEST_KAYIT_YOLU
 	mobil_menu.mobil_arayuz_zorla = true
@@ -209,18 +285,31 @@ func testleri_calistir() -> void:
 	await process_frame
 	kontrol(not mobil_menu.cikis_butonu.visible, "Android ana menüsünde Çıkış düğmesi görünmemeli.")
 	mobil_menu.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	mobil_menu.size = Vector2(360, 640)
-	mobil_menu.ana_menu_yerlesimini_guncelle()
-	await process_frame
-	var mobil_menu_dikdortgen: Rect2 = mobil_menu.menu_paneli.get_global_rect()
-	kontrol(mobil_menu_dikdortgen.position.x >= 23.0 and mobil_menu_dikdortgen.end.x <= 337.0, "Ana menü dar görünümde yatay taşmamalı.")
+	for gorunum in [Vector2(360, 640), Vector2(720, 960), Vector2(480, 1000)]:
+		mobil_menu.size = gorunum
+		mobil_menu.ana_menu_yerlesimini_guncelle()
+		await process_frame
+		var kaydirici_dikdortgen: Rect2 = mobil_menu.icerik_kaydirici.get_global_rect()
+		var mobil_menu_dikdortgen: Rect2 = mobil_menu.menu_paneli.get_global_rect()
+		print("Ana menü responsive: ", gorunum, " kaydırıcı=", kaydirici_dikdortgen, " içerik=", mobil_menu_dikdortgen)
+		kontrol(kaydirici_dikdortgen.position.x >= 23.0 and kaydirici_dikdortgen.position.y >= 23.0, "Ana menü kaydırıcısı sol/üst güvenli alanı aşmamalı: %s" % gorunum)
+		kontrol(kaydirici_dikdortgen.end.x <= gorunum.x - 23.0 and kaydirici_dikdortgen.end.y <= gorunum.y - 23.0, "Ana menü kaydırıcısı sağ/alt güvenli alanı aşmamalı: %s" % gorunum)
+		kontrol(mobil_menu_dikdortgen.position.x >= 23.0 and mobil_menu_dikdortgen.end.x <= gorunum.x - 23.0, "Ana menü içeriği yatay güvenli alanda kalmalı: %s" % gorunum)
+		for menu_butonu in mobil_menu.menu_paneli.find_children("*", "Button", true, false):
+			if menu_butonu.visible:
+				kontrol(menu_butonu.size.y >= 96.0, "%s mobil dokunma hedefi en az 96 tuval birimi olmalı." % menu_butonu.name)
+		if mobil_menu_dikdortgen.end.y > kaydirici_dikdortgen.end.y:
+			var dikey_cubuk: VScrollBar = mobil_menu.icerik_kaydirici.get_v_scroll_bar()
+			kontrol(dikey_cubuk.max_value > dikey_cubuk.page, "Dar görünümde uzun ana menü dikey kaydırılabilir olmalı: %s" % gorunum)
+			mobil_menu.icerik_kaydirici.scroll_vertical = roundi(dikey_cubuk.max_value)
+			await process_frame
+			var son_buton_dikdortgen: Rect2 = mobil_menu.menu_paneli.get_node("Hakkinda").get_global_rect()
+			kontrol(son_buton_dikdortgen.position.y >= kaydirici_dikdortgen.position.y and son_buton_dikdortgen.end.y <= kaydirici_dikdortgen.end.y, "Kaydırınca son görünür menü düğmesine güvenli alan içinde erişilebilmeli: %s" % gorunum)
+			mobil_menu.icerik_kaydirici.scroll_vertical = 0
 	mobil_menu.geri_istegini_isle()
 	kontrol(mobil_menu.cikis_onayi.visible, "Ana menü geri hareketi çıkış onayını açmalı.")
 	mobil_menu.geri_istegini_isle()
 	kontrol(not mobil_menu.cikis_onayi.visible, "İkinci geri hareketi çıkış onayını kapatmalı.")
-	for menu_butonu in mobil_menu.get_node("Panel").find_children("*", "Button", true, false):
-		if menu_butonu.visible:
-			kontrol(menu_butonu.size.y >= 96.0, "%s mobil dokunma hedefi en az 96 tuval birimi olmalı." % menu_butonu.name)
 	mobil_menu.queue_free()
 	await process_frame
 
@@ -256,13 +345,27 @@ func testleri_calistir() -> void:
 	kontrol(ses_yoneticisi != null, "Ses yöneticisi autoload olarak bulunmalı.")
 	if ses_yoneticisi:
 		kontrol(get_nodes_in_group("ses_yoneticisi").size() == 1, "Çalışan ağaçta yalnızca bir ses yöneticisi bulunmalı.")
+		ses_yoneticisi.sessiz_surucude_calismayi_zorla = true
 		var onceki_efekt_tercihi: bool = ses_yoneticisi.ayar_yoneticisi.efektler_acik
 		var onceki_muzik_tercihi: bool = ses_yoneticisi.ayar_yoneticisi.muzik_acik
 		ses_yoneticisi.ayar_yoneticisi.efektler_acik = false
 		ses_yoneticisi.ayar_yoneticisi.muzik_acik = true
 		ses_yoneticisi.ayarları_uygula()
+		ses_yoneticisi.muzik_oynatici.seek(0.2)
+		var muzik_konumu := ses_yoneticisi.muzik_oynatici.get_playback_position()
+		ses_yoneticisi.ayar_yoneticisi.muzik_seviyesi = 0.4
+		ses_yoneticisi.ayarları_uygula()
+		kontrol(ses_yoneticisi.muzik_oynatici.playing and ses_yoneticisi.muzik_oynatici.get_playback_position() >= muzik_konumu - 0.05, "Müzik seviyesi değişince çalma konumu başa dönmemeli.")
 		ses_yoneticisi.efekt_cal("dondur")
 		kontrol(ses_yoneticisi.muzik_oynatici.playing and not ses_yoneticisi.oynatici.playing, "Müzik açık/efekt kapalı kombinasyonu bağımsız çalışmalı.")
+		ses_yoneticisi.ayar_yoneticisi.efektler_acik = true
+		ses_yoneticisi.ayarları_uygula()
+		kontrol(ses_yoneticisi.muzik_oynatici.playing and ses_yoneticisi.muzik_oynatici.get_playback_position() >= muzik_konumu - 0.05, "Efekt tercihi değişince müzik başa dönmemeli.")
+		ses_yoneticisi.efekt_cal("dondur")
+		var ilk_efekt = ses_yoneticisi.yuklu_sesler.get("dondur")
+		var onbellek_boyutu := ses_yoneticisi.yuklu_sesler.size()
+		ses_yoneticisi.efekt_cal("dondur")
+		kontrol(ses_yoneticisi.yuklu_sesler.size() == onbellek_boyutu and ses_yoneticisi.yuklu_sesler.get("dondur") == ilk_efekt, "Aynı efekt yalnız bir kez üretilip önbellekten kullanılmalı.")
 		ses_yoneticisi.ayar_yoneticisi.efektler_acik = true
 		ses_yoneticisi.ayar_yoneticisi.muzik_acik = false
 		ses_yoneticisi.ayarları_uygula()
@@ -274,10 +377,15 @@ func testleri_calistir() -> void:
 
 	kontrol(ResourceLoader.exists("res://icon_foreground.svg") and ResourceLoader.exists("res://icon_background.svg"), "Adaptive ikon foreground ve background kaynakları bulunmalı.")
 
-	DirAccess.remove_absolute(TEST_KAYIT_YOLU)
+	test_kayit_artiklarini_temizle()
 	DirAccess.remove_absolute(TEST_AYAR_YOLU)
 	DirAccess.remove_absolute(TEST_ESKI_AYAR_YOLU)
 	DirAccess.remove_absolute(TEST_SKOR_YOLU)
+	if ses_yoneticisi:
+		ses_yoneticisi.kapanisa_hazirla()
+		# AudioServer'ın durdurulan playback nesnelerini kapanıştan önce bırakmasına izin ver.
+		await create_timer(0.1).timeout
+		await process_frame
 	if basarisizlik_sayisi == 0:
 		print("Tüm Blok Yık kontrolleri başarılı.")
 	quit(basarisizlik_sayisi)
