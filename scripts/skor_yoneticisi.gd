@@ -47,23 +47,57 @@ func indirme_puani_ekle(mesafe: int) -> void:
 	skor += mesafe * 2
 
 func yuksek_skoru_oku() -> int:
-	if not FileAccess.file_exists(kayit_yolu):
+	var kullanilabilir_yol := AtomikDosyaYardimcisi.kurtar(kayit_yolu, _skor_dosyasi_gecerli_mi)
+	if kullanilabilir_yol.is_empty():
 		return 0
-	var dosya := FileAccess.open(kayit_yolu, FileAccess.READ)
+	var dosya := FileAccess.open(kullanilabilir_yol, FileAccess.READ)
 	if dosya == null:
 		return 0
 	var icerik := dosya.get_as_text().strip_edges()
 	dosya.close()
 	if icerik.is_empty():
 		return 0
-	var deger := int(icerik) if icerik.is_valid_int() else 0
-	return max(0, deger)
+	return int(icerik)
 
-func yuksek_skoru_kaydet() -> void:
-	yuksek_skor = max(yuksek_skor, skor)
-	# user:// dizininin varlığını garanti et
-	DirAccess.make_dir_recursive_absolute("user://")
-	var dosya := FileAccess.open(kayit_yolu, FileAccess.WRITE)
-	if dosya != null:
-		dosya.store_string(str(yuksek_skor))
-		dosya.close()
+func yuksek_skoru_kaydet() -> bool:
+	# Ana dosyada daha yüksek bir değer varsa onu da koru; burada kurtarma
+	# çalıştırmayarak atomik yazma hatalarının açıkça raporlanmasını sağlarız.
+	var kayitli_skor := _skor_degerini_oku(kayit_yolu)
+	var hedef_skor := maxi(maxi(yuksek_skor, skor), kayitli_skor)
+	var basarili := AtomikDosyaYardimcisi.atomik_yaz(
+		kayit_yolu,
+		func(yol: String) -> bool: return _skor_dosyasi_yaz(yol, hedef_skor),
+		_skor_dosyasi_gecerli_mi
+	)
+	if basarili:
+		yuksek_skor = hedef_skor
+	return basarili
+
+func _skor_dosyasi_yaz(yol: String, deger: int) -> bool:
+	var dosya := FileAccess.open(yol, FileAccess.WRITE)
+	if dosya == null:
+		return false
+	dosya.store_string(str(maxi(0, deger)))
+	dosya.flush()
+	dosya.close()
+	return true
+
+func _skor_dosyasi_gecerli_mi(yol: String) -> bool:
+	if not FileAccess.file_exists(yol):
+		return false
+	var dosya := FileAccess.open(yol, FileAccess.READ)
+	if dosya == null:
+		return false
+	var icerik := dosya.get_as_text().strip_edges()
+	dosya.close()
+	return icerik.is_valid_int() and int(icerik) >= 0
+
+func _skor_degerini_oku(yol: String) -> int:
+	if not _skor_dosyasi_gecerli_mi(yol):
+		return 0
+	var dosya := FileAccess.open(yol, FileAccess.READ)
+	if dosya == null:
+		return 0
+	var deger := int(dosya.get_as_text().strip_edges())
+	dosya.close()
+	return deger

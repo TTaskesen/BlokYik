@@ -5,12 +5,14 @@ Güncel Android export preset'i hazırdır. Bu belge hazırlık adımları ile d
 ## Doğrulanmış mevcut yapılandırma
 
 - Paket: `com.taskesen.blokyik`
-- Version name: `0.1.1`
-- Version code: `2`
+- Version name: `0.1.3`
+- Version code: `3`
 - Format: Android App Bundle
 - Min SDK: 24
 - Target SDK: 36
 - Mimariler: ARMv7 ve ARM64
+
+Son kaynak commit'i `v0.1.2` olduğu ve bu çalışma ek bir düzeltme paketi oluşturduğu için kullanıcı onayıyla `versionName 0.1.3` ve `versionCode 3` değerleri uygulanmıştır. Play Console'daki son kullanılan code yerel dosyalardan kesin doğrulanamadığından yeni AAB yüklenirken code `3` değerinin daha önce kullanılmadığı ayrıca doğrulanmalıdır.
 
 ## Godot içinde
 
@@ -37,10 +39,11 @@ Güncel Android export preset'i hazırdır. Bu belge hazırlık adımları ile d
 - Manifestte görülen paket/sürüm: `com.taskesen.blokyik` / `0.1.1`
 - `jarsigner` sonucu: imza doğrulandı; imzalayan `CN=Blok Yık Upload Key`
 - Durum: Bu AAB 30 Ağustos kod ve test düzeltmelerinden önce üretildiği için güncel kaynakla aynı değildir ve yeni yayın adayı olarak kullanılmamalıdır.
+- Yeni `0.1.3` adayı için henüz AAB yoktur. Yeni imzalı üretim ve fiziksel Android testi tamamlanmadan yayın hazır kabul edilmez.
 
 ## Bu görevde bilinçli olarak yapılmayanlar
 
-- Sürüm veya version code artırılmadı.
+- Sürüm kullanıcı onayıyla `0.1.3` / code `3` olarak artırıldı.
 - Release keystore oluşturulmadı ya da değiştirilmedi.
 - Keystore parolası dosyaya yazılmadı.
 - Yeni AAB/APK üretilmedi veya imzalanmadı.

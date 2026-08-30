@@ -11,14 +11,16 @@ var kayit_yoneticisi: OyunKayitYoneticisi
 @onready var devam_et_butonu: Button = $GuvenliAlan/IcerikKaydirici/Ortala/Panel/DevamEt
 @onready var kayit_durum_etiketi: Label = $GuvenliAlan/IcerikKaydirici/Ortala/Panel/KayitDurumu
 @onready var cikis_butonu: Button = $GuvenliAlan/IcerikKaydirici/Ortala/Panel/Cikis
+@onready var modal_engelleyici: ColorRect = $ModalEngelleyici
 @onready var cikis_onayi: PanelContainer = $CikisOnayi
+var cikis_istegi_isleyicisi: Callable
 
 func _ready() -> void:
 	kayit_yoneticisi = OyunKayitYoneticisi.new(kayit_yolu)
 	cikis_butonu.visible = not mobil_platform_mu()
-	cikis_onayi.visible = false
+	cikis_modalini_goster(false)
 	$CikisOnayi/Icerik/Evet.pressed.connect(_uygulamadan_cik)
-	$CikisOnayi/Icerik/Vazgec.pressed.connect(func(): cikis_onayi.visible = false)
+	$CikisOnayi/Icerik/Vazgec.pressed.connect(func(): cikis_modalini_goster(false))
 	minimum_dokunma_hedeflerini_uygula(menu_paneli)
 	minimum_dokunma_hedeflerini_uygula(cikis_onayi)
 	resized.connect(ana_menu_yerlesimini_guncelle)
@@ -65,11 +67,14 @@ func _on_hakkinda_pressed() -> void:
 
 func _on_cikis_pressed() -> void:
 	if mobil_platform_mu():
-		cikis_onayi.visible = true
+		cikis_modalini_goster(true)
 		return
 	_uygulamadan_cik()
 
 func _uygulamadan_cik() -> void:
+	if cikis_istegi_isleyicisi.is_valid():
+		cikis_istegi_isleyicisi.call()
+		return
 	var ses_yoneticisi := get_node_or_null("/root/SesYonetici") as SesYoneticisi
 	if ses_yoneticisi:
 		ses_yoneticisi.uygulamadan_cik()
@@ -77,7 +82,13 @@ func _uygulamadan_cik() -> void:
 		get_tree().quit()
 
 func geri_istegini_isle() -> void:
-	cikis_onayi.visible = not cikis_onayi.visible
+	cikis_modalini_goster(not cikis_onayi.visible)
+
+func cikis_modalini_goster(goster: bool) -> void:
+	modal_engelleyici.visible = goster
+	cikis_onayi.visible = goster
+	if goster:
+		$CikisOnayi/Icerik/Vazgec.grab_focus()
 
 func ana_menu_yerlesimini_guncelle() -> void:
 	_guvenli_alan_bosluklarini_guncelle()
@@ -91,9 +102,21 @@ func ana_menu_yerlesimini_guncelle() -> void:
 		kullanilabilir_genislik,
 		maxf(icerik_kaydirici.size.y, menu_paneli.get_combined_minimum_size().y)
 	)
-	var onay_genisligi := minf(360.0, maxf(280.0, size.x - 48.0))
-	cikis_onayi.offset_left = -onay_genisligi * 0.5
-	cikis_onayi.offset_right = onay_genisligi * 0.5
+	var sol_bosluk := float(guvenli_alan.get_theme_constant("margin_left"))
+	var ust_bosluk := float(guvenli_alan.get_theme_constant("margin_top"))
+	var sag_bosluk := float(guvenli_alan.get_theme_constant("margin_right"))
+	var alt_bosluk := float(guvenli_alan.get_theme_constant("margin_bottom"))
+	var guvenli_dikdortgen := Rect2(
+		Vector2(sol_bosluk, ust_bosluk),
+		Vector2(maxf(1.0, size.x - sol_bosluk - sag_bosluk), maxf(1.0, size.y - ust_bosluk - alt_bosluk))
+	)
+	var onay_boyutu := Vector2(
+		minf(360.0, guvenli_dikdortgen.size.x),
+		minf(maxf(240.0, cikis_onayi.get_combined_minimum_size().y), guvenli_dikdortgen.size.y)
+	)
+	cikis_onayi.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	cikis_onayi.position = guvenli_dikdortgen.get_center() - onay_boyutu * 0.5
+	cikis_onayi.size = onay_boyutu
 
 func _guvenli_alan_bosluklarini_guncelle() -> void:
 	var sol := 24.0

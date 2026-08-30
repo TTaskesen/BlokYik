@@ -3,11 +3,7 @@ extends Node
 
 const ORNEKLEME_HIZI := 22050
 const MUZIK_YOLU := "res://audio/muzik.wav"
-const MUZIK_TEMALARI := {
-	1: "res://audio/muzik_oyun_baslangic.wav",
-	2: "res://audio/muzik_oyun_baslangic.wav",
-	3: "res://audio/muzik_oyun_baslangic.wav",
-}
+const OYUN_MUZIGI_YOLU := "res://audio/muzik_oyun_baslangic.wav"
 
 var ayar_yoneticisi := AyarYoneticisi.new()
 var efektler_acik := true
@@ -36,7 +32,8 @@ func ayarları_uygula() -> void:
 	efektler_acik = ayar_yoneticisi.efektler_acik
 	muzik_acik = ayar_yoneticisi.muzik_acik
 	if muzik_oynatici:
-		muzik_oynatici.volume_db = linear_to_db(maxf(ayar_yoneticisi.muzik_seviyesi, 0.001))
+		# volume_linear = 0 gerçek sessizliktir; efekt oynatıcısını etkilemez.
+		muzik_oynatici.volume_linear = AyarYoneticisi.guvenli_muzik_seviyesi(ayar_yoneticisi.muzik_seviyesi)
 	if not efektler_acik and oynatici:
 		oynatici.stop()
 	if muzik_acik and ses_cikisi_kullanilabilir_mi():
@@ -64,11 +61,14 @@ func muzik_yukle() -> void:
 		muzik_stream = load(MUZIK_YOLU)
 		muzik_oynatici.stream = muzik_stream
 
-func tema_degistir(tema_no: int) -> void:
-	var yol = MUZIK_TEMALARI.get(tema_no)
-	if not yol or not ResourceLoader.exists(yol):
+func tema_degistir(_tema_no: int) -> void:
+	# Projede belgelenmiş tek oyun müziği var. Sahte tema çeşitliliği
+	# oluşturmadan aynı stream'i ve mevcut çalma konumunu koru.
+	if not ResourceLoader.exists(OYUN_MUZIGI_YOLU):
 		return
-	var yeni_stream = load(yol)
+	if muzik_oynatici.stream and muzik_oynatici.stream.resource_path == OYUN_MUZIGI_YOLU:
+		return
+	var yeni_stream = load(OYUN_MUZIGI_YOLU)
 	var poz = muzik_oynatici.get_playback_position() if muzik_oynatici.playing else 0.0
 	muzik_oynatici.stream = yeni_stream
 	muzik_stream = yeni_stream
@@ -138,8 +138,7 @@ func _temiz_kapanisi_tamamla() -> void:
 
 func seviye_guncelle() -> void:
 	if muzik_oynatici:
-		var seviye = 0.7
-		muzik_oynatici.volume_db = linear_to_db(seviye)
+		muzik_oynatici.volume_linear = AyarYoneticisi.guvenli_muzik_seviyesi(ayar_yoneticisi.muzik_seviyesi)
 
 func muzik_baslat() -> void:
 	if not muzik_acik or not ses_cikisi_kullanilabilir_mi():

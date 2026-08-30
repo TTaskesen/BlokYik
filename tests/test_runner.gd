@@ -29,16 +29,26 @@ func kontrol(kosul: bool, mesaj: String) -> void:
 		push_error("BAŞARISIZ: " + mesaj)
 
 func test_kayit_artiklarini_temizle() -> void:
-	for yol in [TEST_KAYIT_YOLU, TEST_KAYIT_YOLU + ".tmp", TEST_KAYIT_YOLU + ".bak", TEST_KAYIT_YOLU + ".old", TEST_KAYIT_YOLU + ".bak.tmp"]:
-		if FileAccess.file_exists(yol) or DirAccess.dir_exists_absolute(yol):
-			DirAccess.remove_absolute(yol)
+	for yol in [TEST_KAYIT_YOLU, TEST_AYAR_YOLU, TEST_ESKI_AYAR_YOLU, TEST_SKOR_YOLU]:
+		AtomikDosyaYardimcisi.tum_artiklari_temizle(yol)
+
+func dosya_icerigini_oku(yol: String) -> String:
+	var dosya := FileAccess.open(yol, FileAccess.READ)
+	if dosya == null:
+		return ""
+	var icerik := dosya.get_as_text()
+	dosya.close()
+	return icerik
+
+func ayar_test_dosyasi_yaz(yol: String, degerler: Dictionary) -> bool:
+	var dosya := ConfigFile.new()
+	for anahtar in degerler:
+		dosya.set_value("ses", anahtar, degerler[anahtar])
+	return dosya.save(yol) == OK
 
 func testleri_calistir() -> void:
 	var kayit_yoneticisi := OyunKayitYoneticisi.new(TEST_KAYIT_YOLU)
 	test_kayit_artiklarini_temizle()
-	DirAccess.remove_absolute(TEST_AYAR_YOLU)
-	DirAccess.remove_absolute(TEST_ESKI_AYAR_YOLU)
-	DirAccess.remove_absolute(TEST_SKOR_YOLU)
 	var tahta := OyunTahtasi.new(10, 20)
 	tahta.kilitli_hucreler[Vector2i(2, 18)] = Color.CORNFLOWER_BLUE
 	var skor := SkorYoneticisi.new(TEST_SKOR_YOLU)
@@ -101,6 +111,7 @@ func testleri_calistir() -> void:
 	await process_frame
 	kontrol(oyun.skor_yoneticisi.skor == 345, "Yüklenen skor korunmalı.")
 	kontrol(oyun.skor_yoneticisi.ana_level == 2 and oyun.skor_yoneticisi.alt_seviye == 3, "Yüklenen level bilgisi korunmalı.")
+	kontrol(oyun.guncel_level_adi == "Artı Meydanı" and "Artı Meydanı" in oyun.bolum_etiketi.text, "Kayıttan devam edildiğinde doğru bölüm adı gösterilmeli.")
 	kontrol(oyun.tahta.kilitli_hucreler.has(Vector2i(2, 18)), "Yüklenen tahta hücresi korunmalı.")
 	kontrol(oyun.aktif_parca.konum == Vector2i(4, 7), "Yüklenen aktif parça korunmalı.")
 	kontrol(oyun.sonraki_parca.kalip == [["0"], ["0"]], "Yüklenen sonraki parça korunmalı.")
@@ -125,6 +136,21 @@ func testleri_calistir() -> void:
 	kontrol(oyun.yuksek_skor_etiketi.get_minimum_size().x <= oyun.yuksek_skor_etiketi.size.x, "Dokuz basamaklı yüksek skor panelden taşmamalı.")
 	oyun.arayuzu_guncelle()
 	kontrol(oyun.bolum_etiketi.text.begins_with("Bölüm:"), "Genel ilerleme oyuncuya Bölüm olarak gösterilmeli.")
+	kontrol(oyun.get_node("Arayuz/BilgiPaneli/Kenar/Icerik").get_global_rect().encloses(oyun.bolum_etiketi.get_global_rect()), "Bölüm adı bilgi panelinden taşmamalı.")
+	var level_renkleri := {}
+	for level_no in range(1, LevelYoneticisi.LEVEL_AYARLARI.size() + 1):
+		var level_ayari: Dictionary = oyun.level_yoneticisi.level_ayari_al(level_no)
+		kontrol(str(level_ayari.ad) == oyun.level_yoneticisi.level_adi_al(level_no), "Bölüm %d doğru kullanıcı adını vermeli." % level_no)
+		kontrol(not level_ayari.has("aktif_hucreler"), "Dekoratif tema bölüm %d oynanış ızgara maskesi eklememeli." % level_no)
+		level_renkleri[level_ayari.arka_plan] = true
+	kontrol(level_renkleri.size() == LevelYoneticisi.LEVEL_AYARLARI.size(), "Her ana bölüm ayırt edilebilir bir arka plan paletine sahip olmalı.")
+	var tema_onceki_skor: int = oyun.skor_yoneticisi.skor
+	var tema_onceki_tahta: OyunTahtasi = oyun.tahta
+	var tema_onceki_aktif: BlokParcasi = oyun.aktif_parca
+	var ucuncu_level_ayari: Dictionary = oyun.level_yoneticisi.level_ayari_al(3)
+	oyun.level_kimligini_uygula(ucuncu_level_ayari)
+	kontrol(oyun.guncel_level_adi == "Dar Geçit" and oyun.skor_yoneticisi.skor == tema_onceki_skor and oyun.tahta == tema_onceki_tahta and oyun.aktif_parca == tema_onceki_aktif, "Görsel tema değişimi puan, tahta veya aktif parçayı değiştirmemeli.")
+	oyun.level_kimligini_uygula(oyun.level_yoneticisi.level_ayari_al(2))
 
 	# Mobil ana kontroller 48 dp hedefi için 720 tabanlı tuvalde en az 96 birimdir.
 	oyun.mobil_arayuz_zorla = true
@@ -194,9 +220,12 @@ func testleri_calistir() -> void:
 	oyun.kilitlenmis_parcayi_isle(1)
 	var bolum_gecisi_kaydi := kayit_yoneticisi.yukle()
 	kontrol(bolum_gecisi_kaydi.get("ana_level") == 2, "Ana bölüm değişikliği tamamlanır tamamlanmaz kaydedilmeli.")
+	kontrol(oyun.guncel_level_adi == "Artı Meydanı" and "Artı Meydanı" in oyun.seviye_gecis_etiketi.text, "Yeni ana bölüm geçişi doğru bölüm adını ve görsel kimliği göstermeli.")
 
 	# Bitmiş oyun, uygulama kapansa bile devam edilebilir bir kayıt bırakmamalı.
 	kayit_yoneticisi.kaydet(tahta, skor, aktif, sonraki, 0.25, ParcaUretici.new())
+	oyun.oyunu_sonlandir(true)
+	kontrol(not oyun.oyun_aktif and oyun.oyun_bitti_paneli.visible and oyun.sonuc_basligi.text == "TEBRİKLER!", "Final bölüm tamamlanınca oyun durmalı ve TEBRİKLER paneli görünmeli.")
 	oyun.oyunu_sonlandir(false)
 	kontrol(not kayit_yoneticisi.kayit_var_mi(), "Oyun sonu kaydı Devam Et için kullanılamamalı.")
 	oyun.queue_free()
@@ -291,10 +320,20 @@ func testleri_calistir() -> void:
 		await process_frame
 		var kaydirici_dikdortgen: Rect2 = mobil_menu.icerik_kaydirici.get_global_rect()
 		var mobil_menu_dikdortgen: Rect2 = mobil_menu.menu_paneli.get_global_rect()
+		mobil_menu.cikis_modalini_goster(true)
+		await process_frame
+		var modal_dikdortgen: Rect2 = mobil_menu.cikis_onayi.get_global_rect()
 		print("Ana menü responsive: ", gorunum, " kaydırıcı=", kaydirici_dikdortgen, " içerik=", mobil_menu_dikdortgen)
+		print("Çıkış modalı safe area: ", gorunum, " güvenli=[P: (24, 24), S: ", gorunum - Vector2(48, 48), "] modal=", modal_dikdortgen)
 		kontrol(kaydirici_dikdortgen.position.x >= 23.0 and kaydirici_dikdortgen.position.y >= 23.0, "Ana menü kaydırıcısı sol/üst güvenli alanı aşmamalı: %s" % gorunum)
 		kontrol(kaydirici_dikdortgen.end.x <= gorunum.x - 23.0 and kaydirici_dikdortgen.end.y <= gorunum.y - 23.0, "Ana menü kaydırıcısı sağ/alt güvenli alanı aşmamalı: %s" % gorunum)
 		kontrol(mobil_menu_dikdortgen.position.x >= 23.0 and mobil_menu_dikdortgen.end.x <= gorunum.x - 23.0, "Ana menü içeriği yatay güvenli alanda kalmalı: %s" % gorunum)
+		kontrol(modal_dikdortgen.position.x >= 23.0 and modal_dikdortgen.position.y >= 23.0, "Çıkış modalı sol/üst safe area sınırında kalmalı: %s modal=%s" % [gorunum, modal_dikdortgen])
+		kontrol(modal_dikdortgen.end.x <= gorunum.x - 23.0 and modal_dikdortgen.end.y <= gorunum.y - 23.0, "Çıkış modalı sağ/alt safe area sınırında kalmalı: %s modal=%s" % [gorunum, modal_dikdortgen])
+		kontrol(mobil_menu.modal_engelleyici.visible and mobil_menu.modal_engelleyici.mouse_filter == Control.MOUSE_FILTER_STOP and mobil_menu.modal_engelleyici.z_index > mobil_menu.guvenli_alan.z_index and mobil_menu.modal_engelleyici.z_index < mobil_menu.cikis_onayi.z_index, "Modal engelleyici alttaki menü dokunuşlarını tüketmeli: %s" % gorunum)
+		for modal_butonu in mobil_menu.cikis_onayi.find_children("*", "Button", true, false):
+			kontrol(modal_butonu.size.y >= 96.0, "%s mobil modal dokunma hedefi en az 96 tuval birimi olmalı." % modal_butonu.name)
+		mobil_menu.cikis_modalini_goster(false)
 		for menu_butonu in mobil_menu.menu_paneli.find_children("*", "Button", true, false):
 			if menu_butonu.visible:
 				kontrol(menu_butonu.size.y >= 96.0, "%s mobil dokunma hedefi en az 96 tuval birimi olmalı." % menu_butonu.name)
@@ -306,6 +345,16 @@ func testleri_calistir() -> void:
 			var son_buton_dikdortgen: Rect2 = mobil_menu.menu_paneli.get_node("Hakkinda").get_global_rect()
 			kontrol(son_buton_dikdortgen.position.y >= kaydirici_dikdortgen.position.y and son_buton_dikdortgen.end.y <= kaydirici_dikdortgen.end.y, "Kaydırınca son görünür menü düğmesine güvenli alan içinde erişilebilmeli: %s" % gorunum)
 			mobil_menu.icerik_kaydirici.scroll_vertical = 0
+	var vazgec_butonu: Button = mobil_menu.get_node("CikisOnayi/Icerik/Vazgec")
+	mobil_menu.cikis_modalini_goster(true)
+	vazgec_butonu.pressed.emit()
+	kontrol(not mobil_menu.cikis_onayi.visible and not mobil_menu.modal_engelleyici.visible, "Vazgeç akışı modalı ve engelleyiciyi kapatmalı.")
+	var yakalanan_cikis_istegi := [0]
+	mobil_menu.cikis_istegi_isleyicisi = func(): yakalanan_cikis_istegi[0] += 1
+	mobil_menu.cikis_modalini_goster(true)
+	(mobil_menu.get_node("CikisOnayi/Icerik/Evet") as Button).pressed.emit()
+	kontrol(yakalanan_cikis_istegi[0] == 1, "Çıkış onayı yalnız bir çıkış isteği üretmeli.")
+	mobil_menu.cikis_modalini_goster(false)
 	mobil_menu.geri_istegini_isle()
 	kontrol(mobil_menu.cikis_onayi.visible, "Ana menü geri hareketi çıkış onayını açmalı.")
 	mobil_menu.geri_istegini_isle()
@@ -324,22 +373,99 @@ func testleri_calistir() -> void:
 	geri_testi.queue_free()
 	await process_frame
 
-	# Yeni ayar biçimi iki kanalı bağımsız ve kalıcı saklamalı.
+	# Yeni ayar biçimi iki kanalı bağımsız ve atomik saklamalı.
 	var ayarlar := AyarYoneticisi.new(TEST_AYAR_YOLU)
-	ayarlar.efekt_ayarini_kaydet(false)
-	ayarlar.muzik_ayarini_kaydet(true)
+	ayarlar.efektler_acik = false
+	ayarlar.muzik_acik = true
+	ayarlar.muzik_seviyesi = 0.25
+	kontrol(ayarlar.ayarlari_kaydet(), "İlk atomik ayar kaydı başarılı olmalı.")
 	var yeniden_yuklenen_ayarlar := AyarYoneticisi.new(TEST_AYAR_YOLU)
-	kontrol(not yeniden_yuklenen_ayarlar.efektler_acik and yeniden_yuklenen_ayarlar.muzik_acik, "Efekt kapalı/müzik açık tercihi yeniden başlatmada korunmalı.")
-	yeniden_yuklenen_ayarlar.efekt_ayarini_kaydet(true)
-	yeniden_yuklenen_ayarlar.muzik_ayarini_kaydet(false)
+	kontrol(not yeniden_yuklenen_ayarlar.efektler_acik and yeniden_yuklenen_ayarlar.muzik_acik and is_equal_approx(yeniden_yuklenen_ayarlar.muzik_seviyesi, 0.25), "Efekt kapalı/müzik açık tercihi yeniden başlatmada korunmalı.")
+	yeniden_yuklenen_ayarlar.efektler_acik = true
+	yeniden_yuklenen_ayarlar.muzik_acik = false
+	yeniden_yuklenen_ayarlar.muzik_seviyesi = 0.6
+	kontrol(yeniden_yuklenen_ayarlar.ayarlari_kaydet(), "İkinci atomik ayar kaydı başarılı olmalı.")
+	kontrol(FileAccess.file_exists(TEST_AYAR_YOLU + ".bak") and not FileAccess.file_exists(TEST_AYAR_YOLU + ".tmp"), "Ayar kaydı doğrulanmış yedek bırakmalı, geçici dosya bırakmamalı.")
 	var ikinci_yukleme := AyarYoneticisi.new(TEST_AYAR_YOLU)
 	kontrol(ikinci_yukleme.efektler_acik and not ikinci_yukleme.muzik_acik, "Efekt açık/müzik kapalı tercihi yeniden başlatmada korunmalı.")
+	var bozuk_ayar_ana := FileAccess.open(TEST_AYAR_YOLU, FileAccess.WRITE)
+	bozuk_ayar_ana.store_string("bozuk-ayar")
+	bozuk_ayar_ana.close()
+	var yedekten_ayar := AyarYoneticisi.new(TEST_AYAR_YOLU)
+	kontrol(not yedekten_ayar.efektler_acik and yedekten_ayar.muzik_acik and is_equal_approx(yedekten_ayar.muzik_seviyesi, 0.25), "Bozuk ana ayar doğrulanmış yedekten kurtarılmalı.")
+	var ana_ayar_icerigi := dosya_icerigini_oku(TEST_AYAR_YOLU)
+	DirAccess.make_dir_absolute(TEST_AYAR_YOLU + ".tmp")
+	yedekten_ayar.muzik_seviyesi = 0.9
+	kontrol(not yedekten_ayar.ayarlari_kaydet(), "ConfigFile geçici hedefe yazamazsa açık başarısızlık dönmeli.")
+	kontrol(dosya_icerigini_oku(TEST_AYAR_YOLU) == ana_ayar_icerigi, "Ayar yazımı başarısız olduğunda önceki geçerli ana ayar korunmalı.")
+	DirAccess.remove_absolute(TEST_AYAR_YOLU + ".tmp")
+
+	# Yükleme sınırında sayısal değerler clamp edilir; bozuk türler varsayılana döner.
+	for veri in [[-1.0, 0.0], [0.0, 0.0], [0.4, 0.4], [1.0, 1.0], [2.5, 1.0]]:
+		AtomikDosyaYardimcisi.tum_artiklari_temizle(TEST_AYAR_YOLU)
+		kontrol(ayar_test_dosyasi_yaz(TEST_AYAR_YOLU, {"efektler": true, "muzik": true, "muzik_seviye": veri[0]}), "Clamp test ayarı yazılabilmeli.")
+		var sinirli_ayar := AyarYoneticisi.new(TEST_AYAR_YOLU)
+		kontrol(is_equal_approx(sinirli_ayar.muzik_seviyesi, veri[1]), "Müzik seviyesi %s değeri %s olmalı." % veri)
+	for gecersiz_seviye in ["yüksek", null, NAN, INF, -INF]:
+		kontrol(is_equal_approx(AyarYoneticisi.guvenli_muzik_seviyesi(gecersiz_seviye), AyarYoneticisi.VARSAYILAN_MUZIK_SEVIYESI), "Geçersiz müzik seviyesi güvenli varsayılana dönmeli: %s" % [gecersiz_seviye])
+	AtomikDosyaYardimcisi.tum_artiklari_temizle(TEST_AYAR_YOLU)
+	kontrol(ayar_test_dosyasi_yaz(TEST_AYAR_YOLU, {"efektler": "false", "muzik": 1, "muzik_seviye": 0.2}), "Tür güvenliği test ayarı yazılabilmeli.")
+	var bozuk_turlu_ayar := AyarYoneticisi.new(TEST_AYAR_YOLU)
+	kontrol(bozuk_turlu_ayar.efektler_acik and bozuk_turlu_ayar.muzik_acik and is_equal_approx(bozuk_turlu_ayar.muzik_seviyesi, 0.7), "Boolean tür uyumsuzluğu sessizce dönüştürülmemeli.")
+	AtomikDosyaYardimcisi.tum_artiklari_temizle(TEST_AYAR_YOLU)
+	kontrol(ayar_test_dosyasi_yaz(TEST_AYAR_YOLU, {"efektler": false}), "Eksik anahtar test ayarı yazılabilmeli.")
+	var eksik_anahtarli_ayar := AyarYoneticisi.new(TEST_AYAR_YOLU)
+	kontrol(not eksik_anahtarli_ayar.efektler_acik and eksik_anahtarli_ayar.muzik_acik and is_equal_approx(eksik_anahtarli_ayar.muzik_seviyesi, 0.7), "Eksik ayar anahtarları güvenli varsayılanlarını kullanmalı.")
+	AtomikDosyaYardimcisi.tum_artiklari_temizle(TEST_AYAR_YOLU)
+	var cift_bozuk_ayar := FileAccess.open(TEST_AYAR_YOLU, FileAccess.WRITE)
+	cift_bozuk_ayar.store_string("bozuk-ana")
+	cift_bozuk_ayar.close()
+	var cift_bozuk_ayar_yedek := FileAccess.open(TEST_AYAR_YOLU + ".bak", FileAccess.WRITE)
+	cift_bozuk_ayar_yedek.store_string("bozuk-yedek")
+	cift_bozuk_ayar_yedek.close()
+	var varsayilan_ayar := AyarYoneticisi.new(TEST_AYAR_YOLU)
+	kontrol(varsayilan_ayar.efektler_acik and varsayilan_ayar.muzik_acik and is_equal_approx(varsayilan_ayar.muzik_seviyesi, 0.7), "Ana ve yedek ayar bozuksa güvenli varsayılanlara dönülmeli.")
+	AtomikDosyaYardimcisi.tum_artiklari_temizle(TEST_AYAR_YOLU)
+	kontrol(ayar_test_dosyasi_yaz(TEST_AYAR_YOLU + ".tmp", {"efektler": false, "muzik": true, "muzik_seviye": 0.35}), "Yarım kalmış geçerli ayar dosyası hazırlanabilmeli.")
+	var geciciden_kurtarilan_ayar := AyarYoneticisi.new(TEST_AYAR_YOLU)
+	kontrol(not geciciden_kurtarilan_ayar.efektler_acik and geciciden_kurtarilan_ayar.muzik_acik and is_equal_approx(geciciden_kurtarilan_ayar.muzik_seviyesi, 0.35) and FileAccess.file_exists(TEST_AYAR_YOLU) and not FileAccess.file_exists(TEST_AYAR_YOLU + ".tmp"), "Geçerli geçici ayar başlangıçta atomik biçimde tamamlanmalı.")
 	var eski_ayar_dosyasi := ConfigFile.new()
 	eski_ayar_dosyasi.set_value("ses", "acik", false)
 	eski_ayar_dosyasi.set_value("ses", "muzik", true)
 	eski_ayar_dosyasi.save(TEST_ESKI_AYAR_YOLU)
 	var tasinan_eski_ayar := AyarYoneticisi.new(TEST_ESKI_AYAR_YOLU)
 	kontrol(not tasinan_eski_ayar.efektler_acik and not tasinan_eski_ayar.muzik_acik, "Eski ana sessiz ayarı geçişte uygulamayı sessiz tutmalı.")
+
+	# Yüksek skor da doğrulanmış geçici dosya ve yedek üzerinden atomik saklanır.
+	AtomikDosyaYardimcisi.tum_artiklari_temizle(TEST_SKOR_YOLU)
+	var atomik_skor := SkorYoneticisi.new(TEST_SKOR_YOLU)
+	atomik_skor.skor = 100
+	kontrol(atomik_skor.yuksek_skoru_kaydet(), "İlk atomik yüksek skor yazımı başarılı olmalı.")
+	atomik_skor.skor = 120
+	kontrol(atomik_skor.yuksek_skoru_kaydet() and FileAccess.file_exists(TEST_SKOR_YOLU + ".bak"), "İkinci yüksek skor yazımı doğrulanmış yedek oluşturmalı.")
+	atomik_skor.skor = 10
+	kontrol(atomik_skor.yuksek_skoru_kaydet() and int(dosya_icerigini_oku(TEST_SKOR_YOLU)) == 120, "Düşük skor mevcut yüksek skoru düşürmemeli.")
+	var yarim_skor := FileAccess.open(TEST_SKOR_YOLU + ".tmp", FileAccess.WRITE)
+	yarim_skor.store_string("yarım")
+	yarim_skor.close()
+	kontrol(SkorYoneticisi.new(TEST_SKOR_YOLU).yuksek_skor == 120, "Geçersiz geçici skor geçerli ana skoru bozmamalı.")
+	var bozuk_skor_ana := FileAccess.open(TEST_SKOR_YOLU, FileAccess.WRITE)
+	bozuk_skor_ana.store_string("bozuk")
+	bozuk_skor_ana.close()
+	var kurtarilan_skor := SkorYoneticisi.new(TEST_SKOR_YOLU)
+	kontrol(kurtarilan_skor.yuksek_skor == 120 and int(dosya_icerigini_oku(TEST_SKOR_YOLU)) == 120, "Bozuk yüksek skor ana dosyası yedekten kurtarılmalı.")
+	var skor_ana_icerigi := dosya_icerigini_oku(TEST_SKOR_YOLU)
+	DirAccess.make_dir_absolute(TEST_SKOR_YOLU + ".tmp")
+	kurtarilan_skor.skor = 200
+	kontrol(not kurtarilan_skor.yuksek_skoru_kaydet(), "Yüksek skor geçici hedefi yazılamazsa başarısızlık dönmeli.")
+	kontrol(dosya_icerigini_oku(TEST_SKOR_YOLU) == skor_ana_icerigi, "Skor yazımı başarısız olduğunda önceki geçerli ana skor korunmalı.")
+	DirAccess.remove_absolute(TEST_SKOR_YOLU + ".tmp")
+	AtomikDosyaYardimcisi.tum_artiklari_temizle(TEST_SKOR_YOLU)
+	var gecici_skor := FileAccess.open(TEST_SKOR_YOLU + ".tmp", FileAccess.WRITE)
+	gecici_skor.store_string("175")
+	gecici_skor.close()
+	var geciciden_kurtarilan_skor := SkorYoneticisi.new(TEST_SKOR_YOLU)
+	kontrol(geciciden_kurtarilan_skor.yuksek_skor == 175 and FileAccess.file_exists(TEST_SKOR_YOLU) and not FileAccess.file_exists(TEST_SKOR_YOLU + ".tmp"), "Geçerli geçici yüksek skor başlangıçta atomik biçimde tamamlanmalı.")
 
 	var ses_yoneticisi := root.get_node_or_null("SesYonetici") as SesYoneticisi
 	kontrol(ses_yoneticisi != null, "Ses yöneticisi autoload olarak bulunmalı.")
@@ -348,6 +474,7 @@ func testleri_calistir() -> void:
 		ses_yoneticisi.sessiz_surucude_calismayi_zorla = true
 		var onceki_efekt_tercihi: bool = ses_yoneticisi.ayar_yoneticisi.efektler_acik
 		var onceki_muzik_tercihi: bool = ses_yoneticisi.ayar_yoneticisi.muzik_acik
+		var onceki_muzik_seviyesi: float = ses_yoneticisi.ayar_yoneticisi.muzik_seviyesi
 		ses_yoneticisi.ayar_yoneticisi.efektler_acik = false
 		ses_yoneticisi.ayar_yoneticisi.muzik_acik = true
 		ses_yoneticisi.ayarları_uygula()
@@ -366,6 +493,15 @@ func testleri_calistir() -> void:
 		var onbellek_boyutu := ses_yoneticisi.yuklu_sesler.size()
 		ses_yoneticisi.efekt_cal("dondur")
 		kontrol(ses_yoneticisi.yuklu_sesler.size() == onbellek_boyutu and ses_yoneticisi.yuklu_sesler.get("dondur") == ilk_efekt, "Aynı efekt yalnız bir kez üretilip önbellekten kullanılmalı.")
+		ses_yoneticisi.ayar_yoneticisi.muzik_seviyesi = 0.0
+		ses_yoneticisi.ayarları_uygula()
+		var sifir_onceki_konum := ses_yoneticisi.muzik_oynatici.get_playback_position()
+		kontrol(is_zero_approx(ses_yoneticisi.muzik_oynatici.volume_linear), "Müzik seviyesi sıfır gerçek lineer sessizlik uygulamalı.")
+		ses_yoneticisi.efekt_cal("satir")
+		kontrol(ses_yoneticisi.oynatici.playing, "Müzik sıfırken efekt kanalı bağımsız çalışabilmeli.")
+		ses_yoneticisi.ayar_yoneticisi.muzik_seviyesi = 0.02
+		ses_yoneticisi.ayarları_uygula()
+		kontrol(is_equal_approx(ses_yoneticisi.muzik_oynatici.volume_linear, 0.02) and ses_yoneticisi.muzik_oynatici.get_playback_position() >= sifir_onceki_konum - 0.05, "Müzik seviyesi sıfırdan yükselince çalma konumu korunarak ses geri gelmeli.")
 		ses_yoneticisi.ayar_yoneticisi.efektler_acik = true
 		ses_yoneticisi.ayar_yoneticisi.muzik_acik = false
 		ses_yoneticisi.ayarları_uygula()
@@ -373,14 +509,12 @@ func testleri_calistir() -> void:
 		kontrol(not ses_yoneticisi.muzik_oynatici.playing and ses_yoneticisi.oynatici.playing, "Müzik kapalı/efekt açık kombinasyonu bağımsız çalışmalı.")
 		ses_yoneticisi.ayar_yoneticisi.efektler_acik = onceki_efekt_tercihi
 		ses_yoneticisi.ayar_yoneticisi.muzik_acik = onceki_muzik_tercihi
+		ses_yoneticisi.ayar_yoneticisi.muzik_seviyesi = onceki_muzik_seviyesi
 		ses_yoneticisi.ayarları_uygula()
 
 	kontrol(ResourceLoader.exists("res://icon_foreground.svg") and ResourceLoader.exists("res://icon_background.svg"), "Adaptive ikon foreground ve background kaynakları bulunmalı.")
 
 	test_kayit_artiklarini_temizle()
-	DirAccess.remove_absolute(TEST_AYAR_YOLU)
-	DirAccess.remove_absolute(TEST_ESKI_AYAR_YOLU)
-	DirAccess.remove_absolute(TEST_SKOR_YOLU)
 	if ses_yoneticisi:
 		ses_yoneticisi.kapanisa_hazirla()
 		# AudioServer'ın durdurulan playback nesnelerini kapanıştan önce bırakmasına izin ver.

@@ -98,6 +98,7 @@ autowrap_mode = 2
 layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Bölüm: 1"
+autowrap_mode = 2
 
 [node name="AltSeviye" type="Label" parent="Arayuz/BilgiPaneli/Kenar/Icerik"]
 layout_mode = 2

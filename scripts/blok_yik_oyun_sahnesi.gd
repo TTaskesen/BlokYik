@@ -29,6 +29,10 @@ var yanma_baslangic_zamani := 0
 var _oyun_oturum_id := 0
 var _yerlesim_olcegi := 1.0
 var _yerlesim_ofseti := Vector2.ZERO
+var guncel_level_adi := "Klasik Başlangıç"
+var tema_tahta_rengi := Color("202535")
+var tema_izgara_rengi := Color("4d566d")
+var tema_vurgu_rengi := Color("f43f5e")
 
 @onready var skor_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/Skor
 @onready var yuksek_skor_etiketi: Label = $Arayuz/BilgiPaneli/Kenar/Icerik/YuksekSkor
@@ -249,7 +253,7 @@ func kilitlenmis_parcayi_isle(silinen_satir: int) -> void:
 func arayuzu_guncelle() -> void:
 	skor_etiketi.text = "Skor: %d" % skor_yoneticisi.skor
 	yuksek_skor_etiketi.text = str(skor_yoneticisi.yuksek_skor)
-	bolum_etiketi.text = "Bölüm: %d" % skor_yoneticisi.ana_level
+	bolum_etiketi.text = "Bölüm: %d\n%s" % [skor_yoneticisi.ana_level, guncel_level_adi]
 	alt_seviye_etiketi.text = "Seviye: %d / %d" % [skor_yoneticisi.alt_seviye, SkorYoneticisi.ALT_SEVIYE_SAYISI]
 	satir_etiketi.text = "Hedef: %d / %d" % [skor_yoneticisi.asama_satirlari, SkorYoneticisi.ALT_SEVIYE_ICIN_SATIR]
 	if oyun_duraklatildi:
@@ -291,12 +295,14 @@ func menuye_don() -> void:
 	sahneye_gec("res://scenes/AnaMenu.tscn")
 
 func seviye_gecisini_goster() -> void:
-	seviye_gecis_etiketi.text = "BÖLÜM %d — SEVİYE %d\nHız %%10 arttı" % [skor_yoneticisi.ana_level, skor_yoneticisi.alt_seviye]
+	var gecis_level_adi := level_yoneticisi.level_adi_al(skor_yoneticisi.ana_level)
+	seviye_gecis_etiketi.text = "BÖLÜM %d — %s\nSEVİYE %d • Hız %%10 arttı" % [skor_yoneticisi.ana_level, gecis_level_adi, skor_yoneticisi.alt_seviye]
 	seviye_gecis_etiketi.visible = true
 	seviye_gecis_zamanlayicisi.start()
 
 func level_ayarini_uygula() -> void:
 	var ayar := level_yoneticisi.level_ayari_al(skor_yoneticisi.ana_level)
+	level_kimligini_uygula(ayar)
 	tahta = OyunTahtasi.new(ayar.genislik, ayar.yukseklik, ayar.get("aktif_hucreler", []))
 	parca_uretici = ParcaUretici.new(ayar.parca_havuzu)
 	aktif_parca = parca_uretici.yeni_parca()
@@ -304,6 +310,18 @@ func level_ayarini_uygula() -> void:
 	if ses_yoneticisi:
 		var tema_no = clampi(skor_yoneticisi.ana_level, 1, 3)
 		ses_yoneticisi.tema_degistir(tema_no)
+
+func level_kimligini_uygula(ayar: Dictionary) -> void:
+	guncel_level_adi = str(ayar.ad)
+	tema_tahta_rengi = ayar.tahta
+	tema_izgara_rengi = ayar.izgara
+	tema_vurgu_rengi = ayar.vurgu
+	$ArkaPlan.color = ayar.arka_plan
+	$Arayuz/BilgiPaneli.color = ayar.panel
+	$Arayuz/SonrakiPaneli.color = ayar.panel
+	seviye_gecis_etiketi.add_theme_color_override("font_color", tema_vurgu_rengi)
+	arayuzu_guncelle()
+	queue_redraw()
 
 func oyunu_sonlandir(tamamlandi_mi: bool) -> void:
 	oyun_aktif = false
@@ -372,8 +390,8 @@ func _draw() -> void:
 	var blok_boyutu := guncel_blok_boyutu()
 	var tahta_alani := Rect2(konum - Vector2(8, 8) * _yerlesim_olcegi, Vector2(tahta.genislik * blok_boyutu + 16.0 * _yerlesim_olcegi, tahta.yukseklik * blok_boyutu + 16.0 * _yerlesim_olcegi))
 	if not tahta.ozel_izgara_mi():
-		draw_rect(tahta_alani, Color("111827"), true)
-		draw_rect(tahta_alani, Color("f43f5e"), false, 3.0 * _yerlesim_olcegi)
+		draw_rect(tahta_alani, tema_tahta_rengi.darkened(0.25), true)
+		draw_rect(tahta_alani, tema_vurgu_rengi, false, 3.0 * _yerlesim_olcegi)
 	for y in tahta.yukseklik:
 		for x in tahta.genislik:
 			if not tahta.hucre_aktif_mi(Vector2i(x, y)):
@@ -381,8 +399,8 @@ func _draw() -> void:
 			var alan := Rect2(konum + Vector2(x, y) * blok_boyutu, Vector2.ONE * blok_boyutu)
 			var hucre := Vector2i(x, y)
 			var yanma_rengi := yanma_rengini_al(hucre.y)
-			draw_rect(alan, yanma_rengi if yanma_rengi != Color.TRANSPARENT else (Color("111827") if tahta.ozel_izgara_mi() else Color("202535")), true)
-			draw_rect(alan, Color("4d566d"), false, 1.0)
+			draw_rect(alan, yanma_rengi if yanma_rengi != Color.TRANSPARENT else (tema_tahta_rengi.darkened(0.25) if tahta.ozel_izgara_mi() else tema_tahta_rengi), true)
+			draw_rect(alan, tema_izgara_rengi, false, 1.0)
 	for hucre in tahta.kilitli_hucreler:
 		hucre_ciz(hucre, tahta.kilitli_hucreler[hucre])
 	if aktif_parca:
@@ -499,6 +517,7 @@ func oyunu_yukle() -> bool:
 	# Kayıtlı tahtaya dokunmadan, yalnızca ilgili levelin parça havuzunu kur.
 	var ayar := level_yoneticisi.level_ayari_al(skor_yoneticisi.ana_level)
 	parca_uretici = ParcaUretici.new(ayar.parca_havuzu)
+	level_kimligini_uygula(ayar)
 	ses_yoneticisi.tema_degistir(clampi(skor_yoneticisi.ana_level, 1, 3))
 	arayuzu_guncelle()
 	queue_redraw()

@@ -15,7 +15,7 @@ Kontrol kapsamı: kaynak kodu, Android export preset, mevcut AAB, mağaza varlı
 | Android SDK API 36 | Tamam | Yerel SDK içinde `android-36` mevcut. 31 Ağustos 2026 sonrası yeni uygulama/update için API 36 gereklidir. |
 | Android App Bundle | Eski kaynak adayı | `BlokYik-v0.1.1-release.aab` mevcut; 29 Ağustos 2026 21:29:38 tarihinde oluşturulmuş. Bu kontrol listesindeki kod düzeltmelerini içermediği için güncel yayın adayı değildir. |
 | Paket adı | Tamam | Preset ve AAB manifestinde `com.taskesen.blokyik`. |
-| Sürüm | Doğrulandı | `export_presets.cfg`: `0.1.1` / code `2`. AAB manifestinde paket ile `0.1.1` doğrulandı; code değeri yerel protobuf manifest aracında ayrıca çözümlenemedi. |
+| Sürüm | Kaynakta güncellendi | Son kaynak commit'i `v0.1.2`; kullanıcı onayıyla `export_presets.cfg` `0.1.3` / code `3` yapıldı. Code `3` değerinin Play Console'da daha önce kullanılmadığı yeni AAB yüklenirken ayrıca doğrulanmalıdır. |
 | Release imzası | İmzalı dosya mevcut | `jarsigner` imzayı doğruladı: `CN=Blok Yık Upload Key`; sertifika 14 Ocak 2054'e kadar geçerli. Anahtar/parola repoda tutulmamalı. |
 | İzinler / ağ | Kod incelemesine göre tamam | Ağ çağrısı, reklam, analiz, hesap veya satın alma kodu bulunmadı; final manifest export sonrası doğrulanmalı. |
 | Data Safety | Taslak hazır | `outputs/data-safety-cevap-taslagi.md`; Play Console formu yine hesap sahibi tarafından gönderilmeli. |
@@ -23,7 +23,7 @@ Kontrol kapsamı: kaynak kodu, Android export preset, mevcut AAB, mağaza varlı
 | Hedef kitle / içerik derecelendirmesi | Kullanıcı kararı gerekli | Play Console anketleri gerçek hedef kitleye göre doldurulmalı. |
 | Mağaza metinleri | Tamam | `outputs/play-store-metinleri-tr.md`. |
 | Görsel varlıklar | Kısmen tamam | Ölçüler uygun; ekran görüntüleri otomatik üretilmiş, gerçek Android cihaz QA'sı yapılmadı. |
-| Test | Kısmen tamam | Genişletilmiş headless regresyon paketi başarılı ve beş ardışık kapanışta ses/ObjectDB sızıntı uyarısı görülmedi. Fiziksel Android cihaz testi ayrıca gerekli. |
+| Test | Kısmen tamam | Genişletilmiş headless regresyon paketi; modal safe area, ses sıfır seviyesi, ayar clamp/tür güvenliği, atomik skor/ayar kurtarma, bölüm kimliği ve final akışı kontrolleriyle başarılı. Fiziksel Android cihaz testi ayrıca gerekli. |
 | Yeni kişisel hesap kapalı testi | Hesaba bağlı | Hesap 13 Kasım 2023 sonrası açıldıysa 12 testçi ve 14 gün kapalı test gerekir. |
 | Marka / isim hakları | Kullanıcı kararı gerekli | Uygulama adı `Blok Yık` olarak değiştirildi; yeni ad ve ikonun başka bir marka ile karışmadığı yine kontrol edilmeli. |
 
@@ -34,9 +34,14 @@ Kontrol kapsamı: kaynak kodu, Android export preset, mevcut AAB, mağaza varlı
 - Projede kullanıcı hesabı, bulut kayıt, satın alma veya reklam akışı yok.
 - Android export preset AAB, min SDK 24, target SDK 36, ARMv7 ve ARM64 için yapılandırılmıştır.
 - Release betiği JDK 17 yolunu açıkça kullanır; sürüm adını preset'ten okur ve mevcut AAB'nin üzerine yazmadan durur.
-- Mevcut AAB 52.886.955 bayttır. İmza doğrulaması başarılıdır; AAB manifestindeki paket ve sürüm adı güncel preset ile eşleşir.
-- Mevcut AAB bu dosyadaki 30 Ağustos kod düzeltmelerinden önce üretildi. Yeni yayın adayı oluşturulmadan önce sürüm/versionCode kararı verilmeli, yeni signed AAB üretilmeli ve fiziksel Android testinden geçirilmelidir.
+- Beş bölümün adı HUD/geçiş metninde gösterilir ve oynanış maskesini değiştirmeyen veri odaklı renk paletleri uygulanır.
+- Projede lisansı belgelenmiş tek oyun müziği korunur. Önceki üç aynı-dosya tema eşlemesi kaldırılmıştır; ayrı müzik çeşitliliği gelecekte lisansı açık içerik üretimi gerektirir.
+- Müzik seviyesi `0`, yalnız müzik oynatıcısında gerçek `volume_linear = 0` uygular; efekt kanalı bağımsızdır.
+- Oyun kaydı, yüksek skor ve ayarlar ortak atomik yazma yardımcısıyla geçici dosya doğrulaması ve son geçerli yedek üzerinden korunur.
+- Mevcut AAB 52.886.955 bayttır. İmza doğrulaması başarılıdır; paket adı güncel preset ile eşleşir ancak AAB sürümü `0.1.1`, güncel export sürümü `0.1.3` olduğu için sürümler artık bilinçli olarak farklıdır.
+- Mevcut AAB bu dosyadaki 30 Ağustos kod düzeltmelerinden önce üretildi. Güncel `0.1.3` yayın adayı için yeni signed AAB üretilmeli ve fiziksel Android testinden geçirilmelidir.
 - Bu görevde release üretimi, imzalama veya Play Console işlemi yapılmadı. Daha önceki Console yükleme durumu burada yeniden doğrulanmış sayılmaz.
+- Kaynak çalışma ağacındaki yeni düzeltmeler henüz commitlenmediği için son commit etiketi `v0.1.2` olarak kalır; Android export sürümü kullanıcı onayıyla `0.1.3` / `versionCode 3` olarak güncellenmiştir.
 - Test runner `Tüm Blok Yık kontrolleri başarılı.` yazdırdı. Beş ardışık standart headless çalıştırmada `AudioStreamPlaybackWAV`, `AudioStreamWAV`, `ObjectDB instances were leaked` veya `resources still in use at exit` uyarısı görülmedi.
 
 ## Görsel varlık envanteri
