@@ -37,7 +37,9 @@ if [[ -z "$VERSION_NAME" || "$VERSION_NAME" != <->.<->.<-> || -z "$VERSION_CODE"
 fi
 
 readonly AAB_FILE="$AAB_DIR/BlokYik-v${VERSION_NAME}-release.aab"
-readonly PARTIAL_AAB_FILE="${AAB_FILE}.partial.$$"
+# Godot, Android App Bundle dışa aktarımında hedef dosyanın .aab ile bitmesini
+# zorunlu tutar. Geçici dosya da bu uzantıyı korumalıdır.
+readonly PARTIAL_AAB_FILE="$AAB_DIR/.BlokYik-v${VERSION_NAME}-release.partial.$$.aab"
 
 cleanup() {
   unset release_password release_password_check

@@ -18,7 +18,9 @@ var cikis_istegi_isleyicisi: Callable
 func _ready() -> void:
 	kayit_yoneticisi = OyunKayitYoneticisi.new(kayit_yolu)
 	ana_menu_stilini_uygula()
-	cikis_butonu.visible = not mobil_platform_mu()
+	# Mobilde de kullanıcıya açık bir çıkış akışı sunulur. Android'de uygulamayı
+	# doğrudan kapatmak yerine mevcut onay modalı üzerinden güvenli biçimde çıkarız.
+	cikis_butonu.visible = true
 	cikis_modalini_goster(false)
 	$CikisOnayi/Icerik/Evet.pressed.connect(_uygulamadan_cik)
 	$CikisOnayi/Icerik/Vazgec.pressed.connect(func(): cikis_modalini_goster(false))

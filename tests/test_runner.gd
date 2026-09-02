@@ -312,7 +312,7 @@ func testleri_calistir() -> void:
 	mobil_menu.mobil_arayuz_zorla = true
 	root.add_child(mobil_menu)
 	await process_frame
-	kontrol(not mobil_menu.cikis_butonu.visible, "Android ana menüsünde Çıkış düğmesi görünmemeli.")
+	kontrol(mobil_menu.cikis_butonu.visible, "Android ana menüsünde Çıkış düğmesi görünür olmalı.")
 	mobil_menu.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	for gorunum in [Vector2(360, 640), Vector2(720, 960), Vector2(480, 1000)]:
 		mobil_menu.size = gorunum
@@ -342,7 +342,7 @@ func testleri_calistir() -> void:
 			kontrol(dikey_cubuk.max_value > dikey_cubuk.page, "Dar görünümde uzun ana menü dikey kaydırılabilir olmalı: %s" % gorunum)
 			mobil_menu.icerik_kaydirici.scroll_vertical = roundi(dikey_cubuk.max_value)
 			await process_frame
-			var son_buton_dikdortgen: Rect2 = mobil_menu.menu_paneli.get_node("Hakkinda").get_global_rect()
+			var son_buton_dikdortgen: Rect2 = mobil_menu.menu_paneli.get_node("Cikis").get_global_rect()
 			kontrol(son_buton_dikdortgen.position.y >= kaydirici_dikdortgen.position.y and son_buton_dikdortgen.end.y <= kaydirici_dikdortgen.end.y, "Kaydırınca son görünür menü düğmesine güvenli alan içinde erişilebilmeli: %s" % gorunum)
 			mobil_menu.icerik_kaydirici.scroll_vertical = 0
 	var vazgec_butonu: Button = mobil_menu.get_node("CikisOnayi/Icerik/Vazgec")
