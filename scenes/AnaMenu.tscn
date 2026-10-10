@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://b1tnhcqqbndec"]
 
 [ext_resource type="Script" uid="uid://c1w60tq5xeelk" path="res://scripts/ana_menu.gd" id="1"]
-[ext_resource type="Texture2D" uid="uid://ctj3577josulc" path="res://icon.svg" id="2"]
+[ext_resource type="Texture2D" path="res://assets/branding/blok_yik_icon.svg" id="2"]
 
 [node name="AnaMenu" type="Control" unique_id=810411484]
 layout_mode = 3
@@ -46,8 +46,8 @@ theme_override_constants/separation = 22
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 texture = ExtResource("2")
-expand_mode = 3
-stretch_mode = 3
+expand_mode = 1
+stretch_mode = 5
 
 [node name="Baslik" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1078363240]
 layout_mode = 2

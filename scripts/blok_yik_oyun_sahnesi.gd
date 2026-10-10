@@ -408,9 +408,9 @@ func mobil_oyun_yerlesimini_uygula(zorla := false) -> void:
 		var buton := veri[0] as Button
 		buton.position = veri[1]
 		buton.size = Vector2(120, 96)
-	durum_etiketi.position = Vector2(80, 70)
-	durum_etiketi.size = Vector2(560, 28)
-	durum_etiketi.add_theme_font_size_override("font_size", 15)
+	durum_etiketi.position = Vector2(80, 74)
+	durum_etiketi.size = Vector2(560, 22)
+	durum_etiketi.add_theme_font_size_override("font_size", 13)
 	duraklat_menu.position = Vector2(190, 250)
 	duraklat_menu.size = Vector2(340, 480)
 	oyun_bitti_paneli.position = Vector2(140, 270)

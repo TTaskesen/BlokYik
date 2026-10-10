@@ -7,7 +7,7 @@ func sahneye_gec(sahne_yolu: String) -> void:
 	get_tree().change_scene_to_file(sahne_yolu)
 
 func mobil_platform_mu() -> bool:
-	return mobil_arayuz_zorla or OS.has_feature("android")
+	return mobil_arayuz_zorla or OS.has_feature("android") or OS.has_feature("ios")
 
 func _unhandled_input(olay: InputEvent) -> void:
 	if olay.is_action_pressed("ui_cancel"):

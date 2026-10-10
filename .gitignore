@@ -3,6 +3,7 @@
 android/
 export/
 /build/
+/ios_build/
 *.import
 .import/
 *.tmp

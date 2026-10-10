@@ -98,13 +98,15 @@ func ana_menu_yerlesimini_guncelle() -> void:
 	_guvenli_alan_bosluklarini_guncelle()
 	var yatay_bosluk := float(guvenli_alan.get_theme_constant("margin_left") + guvenli_alan.get_theme_constant("margin_right"))
 	var kullanilabilir_genislik := maxf(240.0, size.x - yatay_bosluk - 8.0)
+	var dikey_bosluk := float(guvenli_alan.get_theme_constant("margin_top") + guvenli_alan.get_theme_constant("margin_bottom"))
+	var kullanilabilir_yukseklik := maxf(1.0, size.y - dikey_bosluk)
 	menu_paneli.custom_minimum_size.x = minf(420.0, kullanilabilir_genislik)
 	if mobil_platform_mu():
 		menu_paneli.add_theme_constant_override("separation", 14)
 		menu_paneli.get_node("Baslik").add_theme_font_size_override("font_size", 50)
 	ortala.custom_minimum_size = Vector2(
 		kullanilabilir_genislik,
-		maxf(icerik_kaydirici.size.y, menu_paneli.get_combined_minimum_size().y)
+		maxf(kullanilabilir_yukseklik, menu_paneli.get_combined_minimum_size().y)
 	)
 	var sol_bosluk := float(guvenli_alan.get_theme_constant("margin_left"))
 	var ust_bosluk := float(guvenli_alan.get_theme_constant("margin_top"))

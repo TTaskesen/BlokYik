@@ -34,22 +34,22 @@ grow_vertical = 2
 [node name="Baslik" type="Label" parent="Arayuz"]
 layout_mode = 0
 offset_left = 100.0
-offset_top = 12.0
+offset_top = 4.0
 offset_right = 620.0
-offset_bottom = 62.0
+offset_bottom = 42.0
 theme_override_colors/font_color = Color(0.95, 0.95, 1, 1)
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 28
 text = "BÖLÜM 1"
 horizontal_alignment = 1
 
 [node name="BaslikAlt" type="Label" parent="Arayuz"]
 layout_mode = 0
 offset_left = 100.0
-offset_top = 58.0
+offset_top = 43.0
 offset_right = 620.0
-offset_bottom = 88.0
+offset_bottom = 66.0
 theme_override_colors/font_color = Color(0.956863, 0.247059, 0.368627, 1)
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 16
 text = "KLASİK BAŞLANGIÇ"
 horizontal_alignment = 1
 
