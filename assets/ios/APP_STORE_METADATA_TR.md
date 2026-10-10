@@ -6,7 +6,7 @@
 - Sürüm: `1.0.0` (yapı 3)
 - Kategori: Oyunlar / Bulmaca
 - Türkiye temel fiyatı: ₺29,99 (diğer bölgelerde Apple'ın eşdeğer fiyatları)
-- Destek iletişimi: `tgrttaskesen@gmail.com`
+- Destek iletişimi: `turguttaskesen@icloud.com`
 - App Review telefonu: `+90 535 849 64 19`
 - Destek ve gizlilik URL'si: `https://ttaskesen.github.io/BlokYik/privacy-policy/`
 
@@ -43,6 +43,13 @@ Kaynak koduna göre hesap, reklam, analiz veya üçüncü taraf takip SDK'sı bu
 ## İçerik hakları
 
 Hak sahibi, logo, görseller ve seslerin haklarının kendisinde olduğunu doğruladı. App Store Connect'te gerekli üçüncü taraf içerik kullanım haklarına sahip olunduğu beyanı kaydedildi. Godot Engine MIT lisans bildirimi gizlilik/destek sayfasının yerel kaynağına eklendi; herkese açık sayfanın güncellenmesi Git tesliminden sonra doğrulanmalı.
+
+## TestFlight hazırlığı — 10 Ekim 2026
+
+- İç test grubu: Blok Yık İç Test; `turguttaskesen@icloud.com` eklendi, yapı `1.0.0 (3)` Testing durumunda.
+- Dış test grubu: Blok Yık Dış Test; `taskesen@msn.com` ve `turguttaskesen@gmail.com` eklendi.
+- Beta geri bildirim ve inceleme e-postası: `turguttaskesen@icloud.com`; inceleme telefonu: `+90 535 849 64 19`.
+- Yapı 3, kullanıcının devam onayıyla Beta App Review'a gönderildi; App Store Connect durumu Waiting for Review. Otomatik test kullanıcısı bildirimi açık. Dış test erişimi Apple onayını bekler.
 
 ## Yayın öncesi doğrulanacak alanlar
 
