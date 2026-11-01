@@ -1,14 +1,13 @@
 # Gizlilik politikasını yayınlama rehberi
 
-`docs/privacy-policy/index.html` dosyası yerel olarak hazırlandı. Play Console’a yerel dosya yolu girilemez; sayfa herkese açık bir HTTPS URL’sinde erişilebilir olmalıdır.
+Mevcut gizlilik/destek URL'si `https://ttaskesen.github.io/BlokYik/privacy-policy/` olarak korunur. Sayfa başka bir yere taşınmayacak; App Store Connect ve Google Play URL alanları değiştirilmeyecek.
 
 ## Kullanıcının tamamlaması gerekenler
 
-1. HTML içindeki uygulama, geliştirici ve iletişim bilgilerini kontrol et. Bu projede iletişim adresi `turguttaskesen@icloud.com` olarak ayarlanmıştır.
-2. HTTPS destekleyen bir barındırma seç: GitHub Pages, Cloudflare Pages veya kendi web alanın.
-3. `docs/privacy-policy/index.html` dosyasını seçtiğin hizmette yayınla.
-4. Gizli anahtar, hesap şifresi veya özel erişim bilgilerini repoya koyma.
-5. Yayındaki URL’yi gizli tarayıcı penceresinde açıp telefonda okunabildiğini kontrol et.
-6. Bu URL’yi Play Console → App content → Privacy policy alanına gir.
+1. Yerel doğru kaynak `docs/privacy-policy/index.html` dosyasıdır. İletişim adresi, kullanıcının açık talimatı ve proje kaydıyla doğrulanan `turguttaskesen@icloud.com` adresidir; tahmin edilmedi.
+2. 10 Ekim 2026 denetiminde canlı sayfa eski `taskesen@msn.com` adresini gösteriyordu. Yerel `origin/main` kaydındaki aynı dosya da eski adresi içeriyor; çalışma dalındaki doğru içeriğin Pages yayın dalına taşınmaması kaynak farkını açıklıyor. Uzak dalın bugün yeniden fetch edilmediği unutulmamalı.
+3. **Açık onay alınmadan commit, push, main güncellemesi veya GitHub Pages yayını yapılmaz.** Yayın onayından sonra mevcut Pages kaynak dalı/klasörü canlı ayarlardan doğrulanmalı; sadece bu HTML içeriği ve gerekli yerel belge kapsamı incelenmeli. Tüm geliştirme dalı sessizce main'e birleştirilmemeli.
+4. Onaylı işlemden sonra aynı URL gizli tarayıcıda ve telefonda açılıp e-posta, güncelleme tarihi ve içerik doğrulanmalı. Alan adı/yol değişikliği yapılmaz.
+5. Gizli anahtar, hesap şifresi veya özel erişim bilgileri repoya koyulmaz.
 
-Uygulama içindeki Hakkında ekranında “Gizlilik Politikası” düğmesi hazırdır. Herkese açık URL henüz verilmediği için düğme şimdilik yayınlanmadığına dair açıklama gösterir. Gerçek URL, `Hakkında` sahnesinin `gizlilik_politikasi_url` export alanına girildikten sonra düğme üzerinden açılır.
+Hakkında ekranındaki mevcut kök bağlantı `https://ttaskesen.github.io/BlokYik/`, `docs/index.html` üzerinden gizlilik sayfasına yönlenir. İki mevcut adres de korunmuştur. Yeni yerel Lisanslar ekranı ağ gerektirmez; canlı web sayfasının güncellenmesi bu ekranın okunması için şart değildir.

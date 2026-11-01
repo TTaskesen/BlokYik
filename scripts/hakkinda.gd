@@ -4,11 +4,16 @@ extends ResponsiveYardimciSahne
 @onready var geri_butonu: Button = $GuvenliAlan/IcerikKaydirici/Ortala/Panel/Geri
 @onready var gizlilik_butonu: Button = $GuvenliAlan/IcerikKaydirici/Ortala/Panel/Gizlilik
 @onready var gizlilik_durumu: Label = $GuvenliAlan/IcerikKaydirici/Ortala/Panel/GizlilikDurumu
+@onready var lisanslar_butonu: Button = $GuvenliAlan/IcerikKaydirici/Ortala/Panel/Lisanslar
 
 func _ready() -> void:
 	super._ready()
 	geri_butonu.pressed.connect(func(): sahneye_gec("res://scenes/AnaMenu.tscn"))
 	gizlilik_butonu.pressed.connect(gizlilik_politikasini_ac)
+	lisanslar_butonu.pressed.connect(lisanslari_ac)
+
+func lisanslari_ac() -> void:
+	sahneye_gec("res://scenes/Lisanslar.tscn")
 
 func gizlilik_politikasini_ac() -> void:
 	if gizlilik_politikasi_url.strip_edges().is_empty():

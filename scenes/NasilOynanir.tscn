@@ -55,7 +55,7 @@ autowrap_mode = 2
 [node name="Metin" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "Satırları doldurarak puan kazan.\n\nMobil kontroller:\n• Dokun: Parçayı döndür.\n• Sağa veya sola kaydır: Yatay hareket ettir.\n• Aşağı kaydır: Hızlı indir.\n• Ekrandaki oklar hareket ettirir; döndür, bırak ve durdur düğmeleri ilgili işlemi yapar.\n\nMasaüstü:\nA/D: Sol/Sağ • W: Döndür • S: Hızlı indir\nBoşluk: Anında bırak • P: Duraklat"
+text = "KLASİK MOD\nDüşen parçalarla satırları doldur, boşlukları planlayarak puan kazan. Turuncu 2×2 Yıkım Kapsülü yere oturduğunda çevresindeki 4×4 alandaki taşları temizler. Ardından etkilenen sütunlardaki taşlar aşağı çöker ve yeni boşluklar açar. Temizlenen her hücre ve düşen taş puan kazandırır. Kapsülün görülme olasılığı bölüm ilerledikçe artar.\n\nMobil kontroller:\n• Dokun: Parçayı döndür.\n• Sağa veya sola kaydır: Yatay hareket ettir.\n• Aşağı kaydır: Hızlı indir.\n• Ekrandaki oklar hareket ettirir; döndür, bırak ve durdur düğmeleri ilgili işlemi yapar.\n\nMasaüstü:\nA/D: Sol/Sağ • W: Döndür • S: Hızlı indir\nBoşluk: Anında bırak • P: Duraklat\n\nYIKIM BULMACASI\nParçalar düşmez. Üç seçenekten birini seç, ızgarada yerleştireceğin hücreye dokun ve parçayı yerleştir. Turuncu hedef taşların bulunduğu satırı temizle. Her bulmacayı en fazla üç hamlede çöz; yanlış hamlede tekrar deneyebilirsin. Tamamlanan bulmacalar cihazına kaydedilir."
 horizontal_alignment = 1
 autowrap_mode = 2
 

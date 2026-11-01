@@ -4,13 +4,18 @@ const TEST_KAYIT_YOLU := "user://blok_yik_test_oyun_kayit.save"
 const TEST_AYAR_YOLU := "user://blok_yik_test_ayarlar.cfg"
 const TEST_ESKI_AYAR_YOLU := "user://blok_yik_test_eski_ayarlar.cfg"
 const TEST_SKOR_YOLU := "user://blok_yik_test_yuksek_skor.save"
+const TEST_YIKIM_BULMACA_YOLU := "user://blok_yik_test_yikim_bulmaca.cfg"
 const OYUN_SAHNESI := preload("res://scenes/BlokYikOyun.tscn")
 const MENU_SAHNESI := preload("res://scenes/AnaMenu.tscn")
+const YIKIM_BULMACASI_SAHNESI := preload("res://scenes/YikimBulmacasi.tscn")
+const YIKIM_BULMACA_TAHTASI := preload("res://scripts/yikim_bulmaca_tahtasi.gd")
+const IOS_YAYIN_TESTLERI := preload("res://tests/ios_yayin_testleri.gd")
 const YARDIMCI_SAHNELER := [
 	preload("res://scenes/Ayarlar.tscn"),
 	preload("res://scenes/NasilOynanir.tscn"),
 	preload("res://scenes/Hakkinda.tscn"),
 	preload("res://scenes/YuksekSkorlar.tscn"),
+	preload("res://scenes/Lisanslar.tscn"),
 ]
 
 class GeriSayacSahnesi extends TemelSahne:
@@ -18,19 +23,79 @@ class GeriSayacSahnesi extends TemelSahne:
 	func geri_istegini_isle() -> void:
 		geri_sayisi += 1
 
+class HucreSecimKaydedicisi extends RefCounted:
+	var konum := Vector2i(-1, -1)
+	func secimi_kaydet(yeni_konum: Vector2i) -> void:
+		konum = yeni_konum
+
 var basarisizlik_sayisi := 0
+var kontrol_sayisi := 0
 
 func _init() -> void:
 	call_deferred("testleri_calistir")
 
 func kontrol(kosul: bool, mesaj: String) -> void:
+	kontrol_sayisi += 1
 	if not kosul:
 		basarisizlik_sayisi += 1
 		push_error("BAŞARISIZ: " + mesaj)
 
 func test_kayit_artiklarini_temizle() -> void:
-	for yol in [TEST_KAYIT_YOLU, TEST_AYAR_YOLU, TEST_ESKI_AYAR_YOLU, TEST_SKOR_YOLU]:
+	for yol in [TEST_KAYIT_YOLU, TEST_AYAR_YOLU, TEST_ESKI_AYAR_YOLU, TEST_SKOR_YOLU, TEST_YIKIM_BULMACA_YOLU]:
 		AtomikDosyaYardimcisi.tum_artiklari_temizle(yol)
+
+func yikim_bulmacasi_testlerini_calistir() -> void:
+	var yonetici := YikimBulmacaYoneticisi.new(TEST_YIKIM_BULMACA_YOLU)
+	kontrol(yonetici.kullanilabilir_parcalar.size() == 3, "Yıkım bulmacası her aşamada üç parçalı seçim sunmalı.")
+	kontrol(yonetici.hedef_sayisi() > 0, "Her yıkım bulmacası temizlenecek hedef taşlarla başlamalı.")
+	var ilk_parca := yonetici.kullanilabilir_parcalar[1]
+	kontrol(yonetici.yerlestirme_gecerli_mi(ilk_parca, Vector2i(0, 0), 0), "Boş alana yapılan geçerli deneme yerleştirilebilir olmalı.")
+	var yanlis_hamle := yonetici.hamleyi_yap(ilk_parca, Vector2i(0, 0), 0)
+	kontrol(yanlis_hamle.gecerli and not yanlis_hamle.satir_silindi and yonetici.kalan_hamle == 2, "Yanlış yere yerleştirme bir hamle harcamalı ancak hedefi silmemeli.")
+	var onceki_ilerleme := yonetici.en_ileri_bulmaca
+	for indeks in YikimBulmacaYoneticisi.BULMACA_SAYISI:
+		yonetici.bulmacayi_yukle(indeks)
+		var dogru_parca: int = yonetici.cozum_parcasi
+		var dogru_konum: Vector2i = yonetici.cozum_konumu_al()
+		kontrol(yonetici.kullanilabilir_parcalar.has(dogru_parca), "Bulmaca %d için doğru parça seçeneklerde bulunmalı." % (indeks + 1))
+		kontrol(yonetici.yerlestirme_gecerli_mi(dogru_parca, dogru_konum, yonetici.cozum_donusu()), "Bulmaca %d için tasarlanan çözüm ızgaraya sığmalı." % (indeks + 1))
+		for aday in yonetici.kullanilabilir_parcalar:
+			if aday == dogru_parca:
+				continue
+			for donus in ParcaUretici.PARCA_HAVUZU[aday].kalip.size():
+				kontrol(not yonetici.parca_hedef_satirini_tamamlayabilir_mi(aday, donus), "Bulmaca %d yanlış seçenek döndürüldüğünde hedef satırı tamamlayamamalı." % (indeks + 1))
+		var cozum := yonetici.hamleyi_yap(dogru_parca, dogru_konum, yonetici.cozum_donusu())
+		kontrol(cozum.gecerli and cozum.satir_silindi and cozum.bulmaca_tamamlandi, "Bulmaca %d doğru parça ile çözülebilmeli." % (indeks + 1))
+		kontrol(yonetici.hedef_sayisi() == 0, "Bulmaca %d tamamlandığında hedef taş kalmamalı." % (indeks + 1))
+		if indeks < YikimBulmacaYoneticisi.BULMACA_SAYISI - 1:
+			kontrol(yonetici.sonraki_bulmaca(), "Tamamlanan bulmacadan sonraki aşamaya geçilebilmeli.")
+		else:
+			kontrol(cozum.bolum_tamamlandi, "15. bulmaca tüm kampanyayı tamamlamalı.")
+		kontrol(yonetici.en_ileri_bulmaca == indeks + 1, "Tamamlanan ilerleme cihazda sırayla saklanmalı.")
+	kontrol(yonetici.en_ileri_bulmaca > onceki_ilerleme, "Bulmaca ilerlemesi başlangıç değerinden artmalı.")
+	var devam_yoneticisi := YikimBulmacaYoneticisi.new(TEST_YIKIM_BULMACA_YOLU)
+	kontrol(devam_yoneticisi.en_ileri_bulmaca == YikimBulmacaYoneticisi.BULMACA_SAYISI, "Tamamlanan bulmaca kampanyası yerel kayıttan yüklenmeli.")
+	var sahne = YIKIM_BULMACASI_SAHNESI.instantiate()
+	sahne.yonetici = devam_yoneticisi
+	root.add_child(sahne)
+	await process_frame
+	kontrol(sahne.bilgi_etiketi != null and sahne.tahta_gorunumu != null and sahne.parca_butonlari.size() == 3, "Bulmaca ekranı yönergeleri, tahtayı ve üç parça seçeneğini göstermeli.")
+	kontrol(sahne.yonetici.bolum_tamamlandi and sahne.yonetici.hedef_sayisi() == 0 and sahne.tekrar_butonu.visible and sahne.tekrar_butonu.text == "Baştan Oyna", "Kampanya sonu tebrik ve yeniden oynama seçeneği göstermeli.")
+	sahne.queue_free()
+	devam_yoneticisi.kampanyayi_sifirla()
+	kontrol(devam_yoneticisi.en_ileri_bulmaca == 0 and not devam_yoneticisi.bolum_tamamlandi, "Oyuncu tamamlanan kampanyayı sıfırlayıp yeniden oynayabilmeli.")
+	var dokunma_tahtasi: Control = YIKIM_BULMACA_TAHTASI.new()
+	root.add_child(dokunma_tahtasi)
+	dokunma_tahtasi.size = Vector2(300, 360)
+	var gozlemci := HucreSecimKaydedicisi.new()
+	dokunma_tahtasi.hucre_secildi.connect(gozlemci.secimi_kaydet)
+	var dokunma := InputEventScreenTouch.new()
+	dokunma.pressed = true
+	dokunma.position = Vector2(135, 165)
+	dokunma_tahtasi._gui_input(dokunma)
+	kontrol(gozlemci.konum == Vector2i(4, 5), "Dokunmatik ızgara seçimi ekrana dokunulduğunda doğru hücreyi bildirmeli.")
+	dokunma_tahtasi.queue_free()
+	await process_frame
 
 func dosya_icerigini_oku(yol: String) -> String:
 	var dosya := FileAccess.open(yol, FileAccess.READ)
@@ -49,6 +114,28 @@ func ayar_test_dosyasi_yaz(yol: String, degerler: Dictionary) -> bool:
 func testleri_calistir() -> void:
 	var kayit_yoneticisi := OyunKayitYoneticisi.new(TEST_KAYIT_YOLU)
 	test_kayit_artiklarini_temizle()
+	await yikim_bulmacasi_testlerini_calistir()
+	var kesin_kapsul_uretici := ParcaUretici.new(ParcaUretici.PARCA_HAVUZU, 1.0)
+	var kesin_kapsul := kesin_kapsul_uretici.yeni_parca()
+	kontrol(kesin_kapsul.yikim_kapsulu and kesin_kapsul.kalip == [["00", "00"]], "Kapsül olasılığı yüzde 100 iken üretici özel 2×2 kapsül oluşturmalı.")
+	var kapsulsuz_uretici := ParcaUretici.new(ParcaUretici.PARCA_HAVUZU, 0.0)
+	kontrol(not kapsulsuz_uretici.yeni_parca().yikim_kapsulu, "Kapsül olasılığı sıfırken normal parçalar üretilmeli.")
+	var patlama_tahtasi := OyunTahtasi.new(10, 20)
+	for y in range(2, 6):
+		for x in range(2, 6):
+			patlama_tahtasi.kilitli_hucreler[Vector2i(x, y)] = Color.WHITE
+	patlama_tahtasi.kilitli_hucreler[Vector2i(3, 0)] = Color.RED
+	patlama_tahtasi.kilitli_hucreler[Vector2i(3, 1)] = Color.BLUE
+	patlama_tahtasi.kilitli_hucreler[Vector2i(1, 1)] = Color.BLUE
+	var patlayacak_kapsul := BlokParcasi.new([["00", "00"]], Color("ff633d"), true)
+	patlayacak_kapsul.konum = Vector2i(3, 3)
+	var patlama_oncesi := patlama_tahtasi.kilitli_hucreler.size()
+	var kapsul_sonucu: Dictionary = patlama_tahtasi.yikim_kapsulunu_patlat(patlayacak_kapsul)
+	kontrol(kapsul_sonucu.temizlenen == 16 and patlama_tahtasi.kilitli_hucreler.size() == patlama_oncesi - 16, "Yıkım kapsülü 2×2 kapsül çevresindeki 4×4 alandaki 16 hücreyi temizlemeli.")
+	kontrol(patlama_tahtasi.kilitli_hucreler.has(Vector2i(1, 1)), "Kapsül etki alanı dışındaki taşlar korunmalı.")
+	var asagi_dusen_tas_sayisi := patlama_tahtasi.etkilenen_sutunlarda_yercekimi_uygula(kapsul_sonucu.etkilenen_sutunlar)
+	kontrol(asagi_dusen_tas_sayisi == 2 and patlama_tahtasi.kilitli_hucreler.has(Vector2i(3, 18)) and patlama_tahtasi.kilitli_hucreler.has(Vector2i(3, 19)), "Patlama sonrası etkilenen sütundaki yukarı taşlar boşluklara doğru düşmeli.")
+	kontrol(patlama_tahtasi.kilitli_hucreler.has(Vector2i(1, 1)), "Sütun yerçekimi patlama alanının dışındaki taşlara dokunmamalı.")
 	var tahta := OyunTahtasi.new(10, 20)
 	tahta.kilitli_hucreler[Vector2i(2, 18)] = Color.CORNFLOWER_BLUE
 	var skor := SkorYoneticisi.new(TEST_SKOR_YOLU)
@@ -57,14 +144,15 @@ func testleri_calistir() -> void:
 	skor.alt_seviye = 3
 	skor.asama_satirlari = 12
 	skor.silinen_satir = 42
-	var aktif := BlokParcasi.new([["00"]], Color.RED)
+	var aktif := BlokParcasi.new([["00"]], Color("ff633d"), true)
 	aktif.konum = Vector2i(4, 7)
 	aktif.donus = 1
-	var sonraki := BlokParcasi.new([["0"], ["0"]], Color.YELLOW)
+	var sonraki := BlokParcasi.new([["0"], ["0"]], Color("ff633d"), true)
 	kayit_yoneticisi.kaydet(tahta, skor, aktif, sonraki, 0.25, ParcaUretici.new())
 	kontrol(kayit_yoneticisi.kayit_var_mi(), "Kayıt yöneticisi yeni kaydı bulmalı.")
 	var ham_kayit := kayit_yoneticisi.yukle()
 	kontrol(ham_kayit.get("surum") == OyunKayitYoneticisi.SURUM, "Geçerli kayıtta desteklenen şema sürümü bulunmalı.")
+	kontrol(bool(ham_kayit.aktif.get("yikim_kapsulu", false)) and bool(ham_kayit.sonraki.get("yikim_kapsulu", false)), "Aktif ve sıradaki kapsül bilgisi kayıtta korunmalı.")
 	kontrol(not FileAccess.file_exists(TEST_KAYIT_YOLU + ".tmp"), "Başarılı atomik kayıttan sonra geçici dosya kalmamalı.")
 	# İkinci başarılı kayıt, önceki geçerli ana kaydı doğrulanmış yedek olarak saklar.
 	kontrol(kayit_yoneticisi.kaydet(tahta, skor, aktif, sonraki, 0.25, ParcaUretici.new()), "İkinci atomik kayıt başarılı olmalı.")
@@ -114,6 +202,7 @@ func testleri_calistir() -> void:
 	kontrol(oyun.guncel_level_adi == "Artı Meydanı" and "Artı Meydanı" in oyun.bolum_etiketi.text, "Kayıttan devam edildiğinde doğru bölüm adı gösterilmeli.")
 	kontrol(oyun.tahta.kilitli_hucreler.has(Vector2i(2, 18)), "Yüklenen tahta hücresi korunmalı.")
 	kontrol(oyun.aktif_parca.konum == Vector2i(4, 7), "Yüklenen aktif parça korunmalı.")
+	kontrol(oyun.aktif_parca.yikim_kapsulu and oyun.sonraki_parca.yikim_kapsulu, "Devam kaydı aktif ve sıradaki yıkım kapsüllerini geri yüklemeli.")
 	kontrol(oyun.sonraki_parca.kalip == [["0"], ["0"]], "Yüklenen sonraki parça korunmalı.")
 
 	# Referans arayüz dar ekranlarda küçülür; önizleme paneli başlık ve butonlardan ayrıdır.
@@ -513,6 +602,7 @@ func testleri_calistir() -> void:
 		ses_yoneticisi.ayarları_uygula()
 
 	kontrol(ResourceLoader.exists("res://icon_foreground.svg") and ResourceLoader.exists("res://icon_background.svg"), "Adaptive ikon foreground ve background kaynakları bulunmalı.")
+	await IOS_YAYIN_TESTLERI.new().calistir(self, kontrol)
 
 	test_kayit_artiklarini_temizle()
 	if ses_yoneticisi:
@@ -521,5 +611,5 @@ func testleri_calistir() -> void:
 		await create_timer(0.1).timeout
 		await process_frame
 	if basarisizlik_sayisi == 0:
-		print("Tüm Blok Yık kontrolleri başarılı.")
+		print("Tüm Blok Yık kontrolleri başarılı. Kontrol sayısı: ", kontrol_sayisi)
 	quit(basarisizlik_sayisi)

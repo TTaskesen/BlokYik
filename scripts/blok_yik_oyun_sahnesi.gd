@@ -27,6 +27,8 @@ var satir_silme_animasyonu_aktif := false
 var yanan_satirlar: Array[int] = []
 var yanma_baslangic_zamani := 0
 var _oyun_oturum_id := 0
+var _satir_animasyon_id := 0
+var kayit_uyarisi := ""
 var _yerlesim_olcegi := 1.0
 var _yerlesim_ofseti := Vector2.ZERO
 var guncel_level_adi := "Klasik Başlangıç"
@@ -90,6 +92,9 @@ func _ready() -> void:
 	yerlesimi_guncelle()
 	arayuzu_guncelle()
 	queue_redraw()
+	ses_yoneticisi.uygulama_arka_plan_durumu_degisti.connect(uygulama_arka_plan_durumunu_isle)
+	if ses_yoneticisi.uygulama_arka_planda:
+		uygulama_arka_plan_durumunu_isle(true)
 
 func _process(delta: float) -> void:
 	if not oyun_aktif or oyun_duraklatildi:
@@ -169,24 +174,35 @@ func aninda_indir() -> void:
 	parcayi_dusur()
 
 func duraklatmayi_degistir() -> void:
-	if not oyun_aktif:
+	if not oyun_aktif or ses_yoneticisi.uygulama_arka_planda:
 		return
-	oyun_duraklatildi = not oyun_duraklatildi
+	duraklatma_durumunu_ayarla(not oyun_duraklatildi)
+
+func duraklatma_durumunu_ayarla(duraklatildi: bool, kaydet := true) -> void:
+	oyun_duraklatildi = duraklatildi
 	duraklatma_etiketi.visible = oyun_duraklatildi
 	duraklat_menu.visible = oyun_duraklatildi
 	duraklat_butonu.text = "Devam Et" if oyun_duraklatildi else "Durdur"
 	duraklat_butonu.release_focus()
 	focusu_birak()
-	if oyun_duraklatildi:
+	if oyun_duraklatildi and kaydet:
 		oyunu_kaydet()
 	if ses_yoneticisi:
-		if oyun_duraklatildi:
-			ses_yoneticisi.muzik_oynatici.stream_paused = true
-		else:
-			if ses_yoneticisi.muzik_acik:
-				ses_yoneticisi.muzik_oynatici.stream_paused = false
-				if not ses_yoneticisi.muzik_oynatici.playing:
-					ses_yoneticisi.muzik_oynatici.play()
+		ses_yoneticisi.oyun_duraklamasini_ayarla(oyun_duraklatildi)
+	arayuzu_guncelle()
+
+func uygulama_arka_plan_durumunu_isle(arka_planda: bool) -> void:
+	# Öne dönüşte duraklama kaldırılmaz; yalnız oyuncunun Devam Et işlemi açar.
+	if not arka_planda or not oyun_aktif:
+		return
+	duraklatma_durumunu_ayarla(true, false)
+	# iOS kısa süre tanır: asenkron animasyonu beklemeden satırı bir kez sonuçlandır.
+	# Sonraki parça oluşturulunca mevcut atomik/doğrulanan kayıt sistemi kullanılır.
+	if satir_silme_animasyonu_aktif:
+		satir_silmeyi_tamamla()
+	else:
+		oyunu_kaydet()
+	skor_yoneticisi.yuksek_skoru_kaydet()
 	arayuzu_guncelle()
 
 func ses_toggle() -> void:
@@ -206,6 +222,13 @@ func parcayi_dusur() -> void:
 	if not tahta.gecerli_mi(aktif_parca):
 		aktif_parca.konum.y -= 1
 		tahta.parcayi_kilitle(aktif_parca)
+		if aktif_parca.yikim_kapsulu:
+			var patlama_sonucu: Dictionary = tahta.yikim_kapsulunu_patlat(aktif_parca)
+			var temizlenen_hucre: int = int(patlama_sonucu.temizlenen)
+			var dusen_taslar := tahta.etkilenen_sutunlarda_yercekimi_uygula(patlama_sonucu.etkilenen_sutunlar)
+			skor_yoneticisi.skor += temizlenen_hucre * 25 + dusen_taslar * 10
+			if temizlenen_hucre > 0:
+				yikim_kapsulu_geri_bildirimi(temizlenen_hucre, dusen_taslar)
 		var dolu_satirlar := tahta.dolu_satirlari_bul()
 		if not dolu_satirlar.is_empty():
 			satir_silme_animasyonunu_oynat(dolu_satirlar)
@@ -216,13 +239,22 @@ func parcayi_dusur() -> void:
 
 func satir_silme_animasyonunu_oynat(dolu_satirlar: Array[int]) -> void:
 	var animasyon_oturum_id := _oyun_oturum_id
+	_satir_animasyon_id += 1
+	var animasyon_id := _satir_animasyon_id
 	satir_silme_animasyonu_aktif = true
-	yanan_satirlar = dolu_satirlar
+	yanan_satirlar = dolu_satirlar.duplicate()
 	yanma_baslangic_zamani = Time.get_ticks_msec()
 	queue_redraw()
 	await get_tree().create_timer(0.35).timeout
-	if animasyon_oturum_id != _oyun_oturum_id or not is_inside_tree():
+	if animasyon_oturum_id != _oyun_oturum_id or animasyon_id != _satir_animasyon_id or not is_inside_tree():
 		return
+	satir_silmeyi_tamamla()
+
+func satir_silmeyi_tamamla() -> void:
+	if not satir_silme_animasyonu_aktif:
+		return
+	# Eski zamanlayıcı dönse bile aynı satır/puan ikinci kez işlenemez.
+	_satir_animasyon_id += 1
 	var silinen_satir := tahta.satirlari_sil(yanan_satirlar)
 	satir_silme_animasyonu_aktif = false
 	yanan_satirlar.clear()
@@ -252,7 +284,13 @@ func kilitlenmis_parcayi_isle(silinen_satir: int) -> void:
 		# Satır animasyonu bittikten ve yeni parça oluşturulduktan sonra durum tutarlıdır.
 		oyunu_kaydet()
 
+func yikim_kapsulu_geri_bildirimi(temizlenen_hucre: int, dusen_taslar: int) -> void:
+	seviye_gecis_etiketi.text = "YIKIM KAPSÜLÜ\n%d hücre • %d taş düştü!" % [temizlenen_hucre, dusen_taslar]
+	seviye_gecis_etiketi.visible = true
+	seviye_gecis_zamanlayicisi.start(1.5)
+
 func arayuzu_guncelle() -> void:
+	$Arayuz/Birak.text = "Bırak" if mobil_platform_mu() else "Bırak (Boşluk)"
 	baslik_etiketi.text = "BÖLÜM %d" % skor_yoneticisi.ana_level
 	baslik_alt_etiketi.text = guncel_level_adi.to_upper()
 	skor_etiketi.text = "Skor: %d" % skor_yoneticisi.skor
@@ -261,9 +299,9 @@ func arayuzu_guncelle() -> void:
 	alt_seviye_etiketi.text = "Seviye: %d / %d" % [skor_yoneticisi.alt_seviye, SkorYoneticisi.ALT_SEVIYE_SAYISI]
 	satir_etiketi.text = "Hedef: %d / %d" % [skor_yoneticisi.asama_satirlari, SkorYoneticisi.ALT_SEVIYE_ICIN_SATIR]
 	if oyun_duraklatildi:
-		durum_etiketi.text = "Oyun duraklatıldı"
+		durum_etiketi.text = "Oyun duraklatıldı" if kayit_uyarisi.is_empty() else "Duraklatıldı • " + kayit_uyarisi
 	elif oyun_aktif:
-		durum_etiketi.text = "Dokun: döndür • Kaydır: hareket / indir" if mobil_platform_mu() else "W: döndür • Boşluk: bırak • P: duraklat"
+		durum_etiketi.text = "Dokun: Döndür • Kaydır: Hareket • Aşağı: İndir" if mobil_platform_mu() else "A/D: Hareket • W: Döndür • Boşluk: Bırak • P: Duraklat"
 	else:
 		durum_etiketi.text = "Oyun bitti — yeniden başlatabilir veya menüye dönebilirsin"
 
@@ -272,6 +310,7 @@ func yeniden_baslat() -> void:
 
 func yeni_oyunu_baslat() -> void:
 	_oyun_oturum_id += 1
+	kayit_uyarisi = ""
 	# Yeniden başlatma, önceki oyunun devam kaydını kullanılamaz hale getirir.
 	if kayit_yoneticisi:
 		kayit_yoneticisi.kaydi_sil()
@@ -281,6 +320,7 @@ func yeni_oyunu_baslat() -> void:
 	dusme_araligi = 0.6
 	oyun_aktif = true
 	oyun_duraklatildi = false
+	ses_yoneticisi.oyun_duraklamasini_ayarla(false)
 	satir_silme_animasyonu_aktif = false
 	yanan_satirlar.clear()
 	oyun_bitti_paneli.visible = false
@@ -308,7 +348,7 @@ func level_ayarini_uygula() -> void:
 	var ayar := level_yoneticisi.level_ayari_al(skor_yoneticisi.ana_level)
 	level_kimligini_uygula(ayar)
 	tahta = OyunTahtasi.new(ayar.genislik, ayar.yukseklik, ayar.get("aktif_hucreler", []))
-	parca_uretici = ParcaUretici.new(ayar.parca_havuzu)
+	parca_uretici = ParcaUretici.new(ayar.parca_havuzu, float(ayar.get("yikim_kapsulu_ihtimali", 0.1)))
 	aktif_parca = parca_uretici.yeni_parca()
 	sonraki_parca = parca_uretici.yeni_parca()
 	if ses_yoneticisi:
@@ -358,6 +398,14 @@ func stil_kutusu(arka_plan: Color, kenar: Color, kenar_genisligi: int) -> StyleB
 
 func oyunu_sonlandir(tamamlandi_mi: bool) -> void:
 	oyun_aktif = false
+	# Arka planda satır tamamlanarak finale ulaşılmışsa iki modal üst üste kalmasın.
+	oyun_duraklatildi = false
+	duraklatma_etiketi.visible = false
+	duraklat_menu.visible = false
+	duraklat_butonu.text = "Durdur"
+	seviye_gecis_etiketi.visible = false
+	seviye_gecis_zamanlayicisi.stop()
+	ses_yoneticisi.oyun_duraklamasini_ayarla(false)
 	# Bitmiş oyun hiçbir zaman devam kaydı olarak geri dönmemeli.
 	kayit_yoneticisi.kaydi_sil()
 	skor_yoneticisi.yuksek_skoru_kaydet()
@@ -377,6 +425,11 @@ func _exit_tree() -> void:
 	# Satır silme animasyonu ve oyun sonu, devam için kararlı durumlar değildir.
 	if oyun_aktif and not satir_silme_animasyonu_aktif:
 		oyunu_kaydet()
+	if is_instance_valid(ses_yoneticisi):
+		if ses_yoneticisi.uygulama_arka_plan_durumu_degisti.is_connected(uygulama_arka_plan_durumunu_isle):
+			ses_yoneticisi.uygulama_arka_plan_durumu_degisti.disconnect(uygulama_arka_plan_durumunu_isle)
+		# Menünün müziği bir önceki oyun sahnesinin duraklamasına bağlı kalmaz.
+		ses_yoneticisi.oyun_duraklamasini_ayarla(false)
 
 func dokunmatik_komutu_uygula(bitis_konumu: Vector2) -> void:
 	if not oyuncu_girisi_kabul_ediliyor_mu():
@@ -442,13 +495,18 @@ func _draw() -> void:
 	if aktif_parca:
 		for hucre in aktif_parca.hucreler():
 			if hucre.y >= 0:
-				hucre_ciz(hucre, aktif_parca.renk)
+				hucre_ciz(hucre, aktif_parca.renk, aktif_parca.yikim_kapsulu)
 	sonraki_parcayi_ciz()
 
-func hucre_ciz(hucre: Vector2i, renk: Color) -> void:
+func hucre_ciz(hucre: Vector2i, renk: Color, kapsul_mu := false) -> void:
 	var alan := Rect2(tahta_konumu() + Vector2(hucre) * guncel_blok_boyutu(), Vector2.ONE * guncel_blok_boyutu())
 	var yanma_rengi := yanma_rengini_al(hucre.y)
 	draw_rect(alan.grow(-2.0 * _yerlesim_olcegi), yanma_rengi if yanma_rengi != Color.TRANSPARENT else renk, true)
+	if kapsul_mu:
+		var merkez := alan.get_center()
+		draw_circle(merkez, 6.0 * _yerlesim_olcegi, Color("32121a"))
+		draw_arc(merkez, 9.0 * _yerlesim_olcegi, 0.0, TAU, 24, Color("fff2d8"), 2.0 * _yerlesim_olcegi)
+		draw_circle(merkez, 2.5 * _yerlesim_olcegi, Color("fff2d8"))
 
 func yanma_rengini_al(y: int) -> Color:
 	if not satir_silme_animasyonu_aktif or y not in yanan_satirlar:
@@ -504,6 +562,10 @@ func sonraki_parcayi_ciz() -> void:
 	for hucre in hucreler:
 		var konum: Vector2 = baslangic + Vector2(hucre.x - en_kucuk_x, hucre.y - en_kucuk_y) * hucre_boyutu
 		draw_rect(Rect2(konum, Vector2.ONE * (hucre_boyutu - 3.0 * _yerlesim_olcegi)), sonraki_parca.renk, true)
+		if sonraki_parca.yikim_kapsulu:
+			var merkez := konum + Vector2.ONE * hucre_boyutu * 0.5
+			draw_circle(merkez, 4.0 * _yerlesim_olcegi, Color("32121a"))
+			draw_arc(merkez, 6.5 * _yerlesim_olcegi, 0.0, TAU, 20, Color("fff2d8"), 1.5 * _yerlesim_olcegi)
 
 func sonraki_onizleme_alani() -> Rect2:
 	var panel_alani: Rect2 = $Arayuz/SonrakiPaneli.get_global_rect()
@@ -514,10 +576,12 @@ func sonraki_onizleme_alani() -> Rect2:
 		panel_alani.size - Vector2(kenar_boslugu * 2.0, baslik_boslugu + kenar_boslugu)
 	)
 
-func oyunu_kaydet() -> void:
+func oyunu_kaydet() -> bool:
 	if not oyun_aktif or satir_silme_animasyonu_aktif:
-		return
-	kayit_yoneticisi.kaydet(tahta, skor_yoneticisi, aktif_parca, sonraki_parca, dusme_araligi, parca_uretici)
+		return false
+	var basarili := kayit_yoneticisi.kaydet(tahta, skor_yoneticisi, aktif_parca, sonraki_parca, dusme_araligi, parca_uretici)
+	kayit_uyarisi = "" if basarili else "Kayıt yazılamadı."
+	return basarili
 
 func oyunu_yukle() -> bool:
 	var data = kayit_yoneticisi.yukle()
@@ -544,15 +608,15 @@ func oyunu_yukle() -> bool:
 	# Aktif parça
 	if data.has("aktif") and data.aktif != null:
 		var a = data.aktif
-		aktif_parca = BlokParcasi.new(a.kalip, Color(a.renk.r, a.renk.g, a.renk.b, a.renk.a))
+		aktif_parca = BlokParcasi.new(a.kalip, Color(a.renk.r, a.renk.g, a.renk.b, a.renk.a), bool(a.get("yikim_kapsulu", false)))
 		aktif_parca.konum = Vector2i(a.x, a.y)
 		aktif_parca.donus = a.donus
 	# Sonraki parça
 	if data.has("sonraki") and data.sonraki != null:
-		sonraki_parca = BlokParcasi.new(data.sonraki.kalip, Color(data.sonraki.renk.r, data.sonraki.renk.g, data.sonraki.renk.b, data.sonraki.renk.a))
+		sonraki_parca = BlokParcasi.new(data.sonraki.kalip, Color(data.sonraki.renk.r, data.sonraki.renk.g, data.sonraki.renk.b, data.sonraki.renk.a), bool(data.sonraki.get("yikim_kapsulu", false)))
 	# Kayıtlı tahtaya dokunmadan, yalnızca ilgili levelin parça havuzunu kur.
 	var ayar := level_yoneticisi.level_ayari_al(skor_yoneticisi.ana_level)
-	parca_uretici = ParcaUretici.new(ayar.parca_havuzu)
+	parca_uretici = ParcaUretici.new(ayar.parca_havuzu, float(ayar.get("yikim_kapsulu_ihtimali", 0.1)))
 	level_kimligini_uygula(ayar)
 	ses_yoneticisi.tema_degistir(clampi(skor_yoneticisi.ana_level, 1, 3))
 	arayuzu_guncelle()

@@ -1,0 +1,79 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/lisanslar.gd" id="1"]
+
+[node name="Lisanslar" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="ArkaPlan" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.05, 0.09, 1)
+mouse_filter = 2
+
+[node name="GuvenliAlan" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="IcerikKaydirici" type="ScrollContainer" parent="GuvenliAlan"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Ortala" type="CenterContainer" parent="GuvenliAlan/IcerikKaydirici"]
+layout_mode = 2
+
+[node name="Panel" type="VBoxContainer" parent="GuvenliAlan/IcerikKaydirici/Ortala"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Baslik" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "AÇIK KAYNAK LİSANSLARI"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Aciklama" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Blok Yık, Godot Engine ile geliştirilmiştir. Aşağıdaki özgün lisans metinleri uygulama içinde, internet bağlantısı olmadan okunabilir."
+autowrap_mode = 2
+
+[node name="Geri" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Hakkında Ekranına Dön"
+
+[node name="Bilesenler" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Üçüncü Taraf Lisansları"
+
+[node name="LisansMetni" type="RichTextLabel" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 18
+fit_content = true
+scroll_active = false
+autowrap_mode = 3
+selection_enabled = true

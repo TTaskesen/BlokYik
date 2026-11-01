@@ -66,6 +66,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Gizlilik Politikası"
 
+[node name="Lisanslar" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Açık Kaynak Lisansları"
+
 [node name="GizlilikDurumu" type="Label" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2

@@ -14,10 +14,14 @@ const PARCA_HAVUZU := [
 ]
 
 var parca_havuzu: Array
+var yikim_kapsulu_ihtimali := 0.1
 
-func _init(yeni_parca_havuzu: Array = PARCA_HAVUZU) -> void:
+func _init(yeni_parca_havuzu: Array = PARCA_HAVUZU, yeni_yikim_kapsulu_ihtimali := 0.1) -> void:
 	parca_havuzu = yeni_parca_havuzu
+	yikim_kapsulu_ihtimali = clampf(yeni_yikim_kapsulu_ihtimali, 0.0, 1.0)
 
 func yeni_parca() -> BlokParcasi:
+	if randf() < yikim_kapsulu_ihtimali:
+		return BlokParcasi.new([["00", "00"]], Color("ff633d"), true)
 	var secim: Dictionary = parca_havuzu[randi_range(0, parca_havuzu.size() - 1)]
 	return BlokParcasi.new(secim.kalip, secim.renk)

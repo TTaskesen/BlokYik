@@ -33,6 +33,53 @@ func parcayi_kilitle(parca: BlokParcasi) -> void:
 		if hucre.y >= 0:
 			kilitli_hucreler[hucre] = parca.renk
 
+func yikim_kapsulunu_patlat(parca: BlokParcasi) -> Dictionary:
+	if parca == null or not parca.yikim_kapsulu:
+		return {"temizlenen": 0, "etkilenen_sutunlar": []}
+	# Kapsülün her hücresi 3×3 etki alanı üretir; bitişik alanlar birleşir.
+	# Böylece 2×2 kapsül yere oturduğunda toplam etki alanı 4×4 olur.
+	var yikim_alani: Dictionary = {}
+	var etkilenen_sutunlar: Dictionary = {}
+	for merkez in parca.hucreler():
+		for y in range(merkez.y - 1, merkez.y + 2):
+			for x in range(merkez.x - 1, merkez.x + 2):
+				var hucre := Vector2i(x, y)
+				if hucre_aktif_mi(hucre):
+					yikim_alani[hucre] = true
+					etkilenen_sutunlar[x] = true
+	var temizlenen := 0
+	for hucre in yikim_alani:
+		if kilitli_hucreler.erase(hucre):
+			temizlenen += 1
+	var sutunlar: Array[int] = []
+	for x in etkilenen_sutunlar:
+		sutunlar.append(int(x))
+	sutunlar.sort()
+	return {"temizlenen": temizlenen, "etkilenen_sutunlar": sutunlar}
+
+func etkilenen_sutunlarda_yercekimi_uygula(sutunlar: Array) -> int:
+	var dusen_tas_sayisi := 0
+	for sutun_degeri in sutunlar:
+		var x := int(sutun_degeri)
+		if x < 0 or x >= genislik:
+			continue
+		var taslar: Array[Dictionary] = []
+		for y in range(yukseklik - 1, -1, -1):
+			var hucre := Vector2i(x, y)
+			if hucre_aktif_mi(hucre) and kilitli_hucreler.has(hucre):
+				taslar.append({"y": y, "renk": kilitli_hucreler[hucre]})
+		for y in yukseklik:
+			var hucre := Vector2i(x, y)
+			if hucre_aktif_mi(hucre):
+				kilitli_hucreler.erase(hucre)
+		for indeks in taslar.size():
+			var tas: Dictionary = taslar[indeks]
+			var yeni_y := yukseklik - 1 - indeks
+			kilitli_hucreler[Vector2i(x, yeni_y)] = tas.renk
+			if int(tas.y) != yeni_y:
+				dusen_tas_sayisi += 1
+	return dusen_tas_sayisi
+
 func dolu_satirlari_bul() -> Array[int]:
 	var dolu_satirlar: Array[int] = []
 	for y in yukseklik:

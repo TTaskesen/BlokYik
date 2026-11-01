@@ -2,12 +2,17 @@ class_name TemelSahne
 extends Control
 
 @export var mobil_arayuz_zorla := false
+# Testler platform dallarını işletim sistemini değiştirmeden doğrulayabilir.
+var platform_adi := OS.get_name()
 
 func sahneye_gec(sahne_yolu: String) -> void:
 	get_tree().change_scene_to_file(sahne_yolu)
 
 func mobil_platform_mu() -> bool:
-	return mobil_arayuz_zorla or OS.has_feature("android") or OS.has_feature("ios")
+	return mobil_arayuz_zorla or platform_adi in ["Android", "iOS"]
+
+func ios_platform_mu() -> bool:
+	return platform_adi == "iOS"
 
 func _unhandled_input(olay: InputEvent) -> void:
 	if olay.is_action_pressed("ui_cancel"):

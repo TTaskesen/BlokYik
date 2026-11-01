@@ -1,6 +1,8 @@
 class_name SesYoneticisi
 extends Node
 
+signal uygulama_arka_plan_durumu_degisti(arka_planda: bool)
+
 const ORNEKLEME_HIZI := 22050
 const MUZIK_YOLU := "res://audio/muzik.wav"
 const OYUN_MUZIGI_YOLU := "res://audio/muzik_oyun_baslangic.wav"
@@ -14,8 +16,14 @@ var yuklu_sesler := {}
 var muzik_stream
 var sessiz_surucude_calismayi_zorla := false
 var _kapanis_basladi := false
+var platform_adi := OS.get_name()
+var uygulama_arka_planda := false
+var oyun_sesi_duraklatildi := false
+var _uygulama_askida := false
+var _uygulama_odaksiz := false
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().auto_accept_quit = false
 	add_to_group("ses_yoneticisi")
 	oynatici = AudioStreamPlayer.new()
@@ -23,7 +31,7 @@ func _ready() -> void:
 	muzik_oynatici = AudioStreamPlayer.new()
 	muzik_oynatici.volume_db = linear_to_db(1.0)
 	add_child(muzik_oynatici)
-	muzik_oynatici.finished.connect(func(): if muzik_acik: muzik_oynatici.play())
+	muzik_oynatici.finished.connect(muzik_baslat)
 	sesleri_yukle()
 	muzik_yukle()
 	ayarları_uygula()
@@ -39,7 +47,7 @@ func ayarları_uygula() -> void:
 	if muzik_acik and ses_cikisi_kullanilabilir_mi():
 		# Ayarlar veya slider tekrar uygulandığında çalan müziğin konumunu koru.
 		if muzik_oynatici:
-			muzik_oynatici.stream_paused = false
+			muzik_duraklamasini_guncelle()
 			if not muzik_oynatici.playing:
 				muzik_baslat()
 	else:
@@ -62,6 +70,8 @@ func muzik_yukle() -> void:
 		muzik_oynatici.stream = muzik_stream
 
 func tema_degistir(_tema_no: int) -> void:
+	if _kapanis_basladi or not is_instance_valid(muzik_oynatici):
+		return
 	# Projede belgelenmiş tek oyun müziği var. Sahte tema çeşitliliği
 	# oluşturmadan aynı stream'i ve mevcut çalma konumunu koru.
 	if not ResourceLoader.exists(OYUN_MUZIGI_YOLU):
@@ -72,13 +82,14 @@ func tema_degistir(_tema_no: int) -> void:
 	var poz = muzik_oynatici.get_playback_position() if muzik_oynatici.playing else 0.0
 	muzik_oynatici.stream = yeni_stream
 	muzik_stream = yeni_stream
-	if muzik_acik and ses_cikisi_kullanilabilir_mi():
+	if muzik_acik and not uygulama_arka_planda and not oyun_sesi_duraklatildi and ses_cikisi_kullanilabilir_mi():
 		muzik_oynatici.play()
 		muzik_oynatici.seek(poz)
+	muzik_duraklamasini_guncelle()
 
 
 func efekt_cal(efekt_adi: String) -> void:
-	if not efektler_acik or not ses_cikisi_kullanilabilir_mi():
+	if _kapanis_basladi or uygulama_arka_planda or oyun_sesi_duraklatildi or not is_instance_valid(oynatici) or not efektler_acik or not ses_cikisi_kullanilabilir_mi():
 		return
 	var frekans := 440.0
 	var sure := 0.08
@@ -127,8 +138,45 @@ func kapanisa_hazirla() -> void:
 func _notification(ne: int) -> void:
 	if ne == NOTIFICATION_WM_CLOSE_REQUEST and not _kapanis_basladi:
 		uygulamadan_cik()
+	if platform_adi not in ["iOS", "Android"] or _kapanis_basladi:
+		return
+	match ne:
+		NOTIFICATION_APPLICATION_PAUSED:
+			_uygulama_askida = true
+		NOTIFICATION_APPLICATION_RESUMED:
+			_uygulama_askida = false
+		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			_uygulama_odaksiz = true
+		NOTIFICATION_APPLICATION_FOCUS_IN:
+			_uygulama_odaksiz = false
+		_:
+			return
+	var arka_planda := _uygulama_askida or _uygulama_odaksiz
+	if arka_planda == uygulama_arka_planda:
+		return
+	uygulama_arka_planda = arka_planda
+	if arka_planda and is_instance_valid(oynatici):
+		oynatici.stop()
+	# Oyun sahnesi yalnız true durumunda kaydeder; öne dönüş otomatik oynatmaz.
+	muzik_duraklamasini_guncelle()
+	uygulama_arka_plan_durumu_degisti.emit(arka_planda)
+	if not arka_planda:
+		muzik_baslat()
+
+func oyun_duraklamasini_ayarla(duraklatildi: bool) -> void:
+	oyun_sesi_duraklatildi = duraklatildi
+	muzik_duraklamasini_guncelle()
+	if not duraklatildi:
+		muzik_baslat()
+
+func muzik_duraklamasini_guncelle() -> void:
+	if is_instance_valid(muzik_oynatici):
+		muzik_oynatici.stream_paused = uygulama_arka_planda or oyun_sesi_duraklatildi
 
 func uygulamadan_cik() -> void:
+	# iOS'ta desteklenmeyen quit çağrısından ÖNCE ses kaynaklarını koru.
+	if platform_adi == "iOS" or _kapanis_basladi:
+		return
 	kapanisa_hazirla()
 	call_deferred("_temiz_kapanisi_tamamla")
 
@@ -141,7 +189,7 @@ func seviye_guncelle() -> void:
 		muzik_oynatici.volume_linear = AyarYoneticisi.guvenli_muzik_seviyesi(ayar_yoneticisi.muzik_seviyesi)
 
 func muzik_baslat() -> void:
-	if not muzik_acik or not ses_cikisi_kullanilabilir_mi():
+	if _kapanis_basladi or uygulama_arka_planda or oyun_sesi_duraklatildi or not muzik_acik or not ses_cikisi_kullanilabilir_mi():
 		return
 	if muzik_oynatici and muzik_oynatici.stream and not muzik_oynatici.playing:
 		muzik_oynatici.stream_paused = false

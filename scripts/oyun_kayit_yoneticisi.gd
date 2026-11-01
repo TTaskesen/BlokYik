@@ -42,12 +42,14 @@ func kaydet(tahta: OyunTahtasi, skor_yoneticisi: SkorYoneticisi, aktif_parca: Bl
 			"y": aktif_parca.konum.y,
 			"donus": aktif_parca.donus,
 			"renk": {"r": aktif_parca.renk.r, "g": aktif_parca.renk.g, "b": aktif_parca.renk.b, "a": aktif_parca.renk.a},
-			"kalip": aktif_parca.kalip
+			"kalip": aktif_parca.kalip,
+			"yikim_kapsulu": aktif_parca.yikim_kapsulu
 		}
 	if sonraki_parca:
 		data.sonraki = {
 			"renk": {"r": sonraki_parca.renk.r, "g": sonraki_parca.renk.g, "b": sonraki_parca.renk.b, "a": sonraki_parca.renk.a},
-			"kalip": sonraki_parca.kalip
+			"kalip": sonraki_parca.kalip,
+			"yikim_kapsulu": sonraki_parca.yikim_kapsulu
 		}
 	
 	if not _atomik_kaydet(data):

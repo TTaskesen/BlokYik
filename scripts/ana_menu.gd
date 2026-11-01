@@ -18,12 +18,13 @@ var cikis_istegi_isleyicisi: Callable
 func _ready() -> void:
 	kayit_yoneticisi = OyunKayitYoneticisi.new(kayit_yolu)
 	ana_menu_stilini_uygula()
-	# Mobilde de kullanıcıya açık bir çıkış akışı sunulur. Android'de uygulamayı
-	# doğrudan kapatmak yerine mevcut onay modalı üzerinden güvenli biçimde çıkarız.
-	cikis_butonu.visible = true
+	# SceneTree.quit() iOS'ta desteklenmez; uygulamadan sistem hareketiyle ayrılınır.
+	# Android'de onay modalı, masaüstünde mevcut doğrudan çıkış korunur.
+	cikis_butonu.visible = not ios_platform_mu()
 	cikis_modalini_goster(false)
 	$CikisOnayi/Icerik/Evet.pressed.connect(_uygulamadan_cik)
 	$CikisOnayi/Icerik/Vazgec.pressed.connect(func(): cikis_modalini_goster(false))
+	$GuvenliAlan/IcerikKaydirici/Ortala/Panel/YikimBulmacasi.pressed.connect(_on_yikim_bulmaca_pressed)
 	minimum_dokunma_hedeflerini_uygula(menu_paneli)
 	minimum_dokunma_hedeflerini_uygula(cikis_onayi)
 	resized.connect(ana_menu_yerlesimini_guncelle)
@@ -36,6 +37,9 @@ func _on_basla_pressed() -> void:
 	kayit_yoneticisi.kaydi_sil()
 	get_tree().set_meta("kayitli_oyun_yukle", false)
 	sahneye_gec("res://scenes/BlokYikOyun.tscn")
+
+func _on_yikim_bulmaca_pressed() -> void:
+	sahneye_gec("res://scenes/YikimBulmacasi.tscn")
 
 func _on_nasil_oynanir_pressed() -> void:
 	sahneye_gec("res://scenes/NasilOynanir.tscn")
@@ -70,12 +74,16 @@ func _on_hakkinda_pressed() -> void:
 	sahneye_gec("res://scenes/Hakkinda.tscn")
 
 func _on_cikis_pressed() -> void:
+	if ios_platform_mu():
+		return
 	if mobil_platform_mu():
 		cikis_modalini_goster(true)
 		return
 	_uygulamadan_cik()
 
 func _uygulamadan_cik() -> void:
+	if ios_platform_mu():
+		return
 	if cikis_istegi_isleyicisi.is_valid():
 		cikis_istegi_isleyicisi.call()
 		return
@@ -86,9 +94,12 @@ func _uygulamadan_cik() -> void:
 		get_tree().quit()
 
 func geri_istegini_isle() -> void:
+	if ios_platform_mu():
+		return
 	cikis_modalini_goster(not cikis_onayi.visible)
 
 func cikis_modalini_goster(goster: bool) -> void:
+	goster = goster and not ios_platform_mu()
 	modal_engelleyici.visible = goster
 	cikis_onayi.visible = goster
 	if goster:
@@ -133,6 +144,7 @@ func ana_menu_stilini_uygula() -> void:
 	var basili := stil_kutusu(panel_rengi.lightened(0.16), vurgu, 3)
 	for buton in [
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Basla,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/YikimBulmacasi,
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/NasilOynanir,
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Ayarlar,
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/DevamEt,

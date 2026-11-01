@@ -68,6 +68,11 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Yeni Oyuna Başla"
 
+[node name="YikimBulmacasi" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Yıkım Bulmacası"
+
 [node name="NasilOynanir" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1752332146]
 layout_mode = 2
 theme_override_font_sizes/font_size = 24

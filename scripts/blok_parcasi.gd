@@ -5,10 +5,12 @@ var kalip: Array
 var renk: Color
 var konum := Vector2i(3, 0)
 var donus := 0
+var yikim_kapsulu := false
 
-func _init(yeni_kalip: Array = [], yeni_renk: Color = Color.WHITE) -> void:
+func _init(yeni_kalip: Array = [], yeni_renk: Color = Color.WHITE, kapsul_mu := false) -> void:
 	kalip = yeni_kalip
 	renk = yeni_renk
+	yikim_kapsulu = kapsul_mu
 
 func hucreler() -> Array[Vector2i]:
 	var sonuc: Array[Vector2i] = []
