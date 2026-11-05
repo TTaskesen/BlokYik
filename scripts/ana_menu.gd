@@ -3,6 +3,7 @@ extends TemelSahne
 var ayar_yoneticisi := AyarYoneticisi.new()
 @export var kayit_yolu := OyunKayitYoneticisi.KAYIT_YOLU
 var kayit_yoneticisi: OyunKayitYoneticisi
+var oyun_secimi_acik := false
 
 @onready var guvenli_alan: MarginContainer = $GuvenliAlan
 @onready var icerik_kaydirici: ScrollContainer = $GuvenliAlan/IcerikKaydirici
@@ -24,7 +25,10 @@ func _ready() -> void:
 	cikis_modalini_goster(false)
 	$CikisOnayi/Icerik/Evet.pressed.connect(_uygulamadan_cik)
 	$CikisOnayi/Icerik/Vazgec.pressed.connect(func(): cikis_modalini_goster(false))
+	$GuvenliAlan/IcerikKaydirici/Ortala/Panel/KlasikMod.pressed.connect(_on_basla_pressed)
 	$GuvenliAlan/IcerikKaydirici/Ortala/Panel/YikimBulmacasi.pressed.connect(_on_yikim_bulmaca_pressed)
+	$GuvenliAlan/IcerikKaydirici/Ortala/Panel/YankiZinciri.pressed.connect(_on_yanki_zinciri_pressed)
+	_oyun_secimlerini_guncelle()
 	minimum_dokunma_hedeflerini_uygula(menu_paneli)
 	minimum_dokunma_hedeflerini_uygula(cikis_onayi)
 	resized.connect(ana_menu_yerlesimini_guncelle)
@@ -38,8 +42,26 @@ func _on_basla_pressed() -> void:
 	get_tree().set_meta("kayitli_oyun_yukle", false)
 	sahneye_gec("res://scenes/BlokYikOyun.tscn")
 
+func _on_oyun_menu_pressed() -> void:
+	oyun_secimi_acik = not oyun_secimi_acik
+	_oyun_secimlerini_guncelle()
+
+func _oyun_secimlerini_guncelle() -> void:
+	var panel := menu_paneli
+	panel.get_node("Basla").text = "‹ Geri" if oyun_secimi_acik else "Oyun"
+	for ad in ["KlasikMod", "YikimBulmacasi", "YankiZinciri"]:
+		panel.get_node(ad).visible = oyun_secimi_acik
+	for ad in ["NasilOynanir", "Ayarlar", "DevamEt", "KayitDurumu", "YuksekSkorlar", "Hakkinda", "Cikis"]:
+		panel.get_node(ad).visible = not oyun_secimi_acik
+	if oyun_secimi_acik:
+		icerik_kaydirici.scroll_vertical = 0
+	ana_menu_yerlesimini_guncelle()
+
 func _on_yikim_bulmaca_pressed() -> void:
 	sahneye_gec("res://scenes/YikimBulmacasi.tscn")
+
+func _on_yanki_zinciri_pressed() -> void:
+	sahneye_gec("res://scenes/YankiZinciri.tscn")
 
 func _on_nasil_oynanir_pressed() -> void:
 	sahneye_gec("res://scenes/NasilOynanir.tscn")
@@ -144,7 +166,9 @@ func ana_menu_stilini_uygula() -> void:
 	var basili := stil_kutusu(panel_rengi.lightened(0.16), vurgu, 3)
 	for buton in [
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Basla,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/KlasikMod,
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/YikimBulmacasi,
+		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/YankiZinciri,
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/NasilOynanir,
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/Ayarlar,
 		$GuvenliAlan/IcerikKaydirici/Ortala/Panel/DevamEt,

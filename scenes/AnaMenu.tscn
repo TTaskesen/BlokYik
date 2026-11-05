@@ -60,18 +60,31 @@ horizontal_alignment = 1
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.72, 0.9, 1)
 theme_override_font_sizes/font_size = 17
-text = "KLASİK BULMACA • 5 BÖLÜM"
+text = "3 FARKLI OYUN MODU"
 horizontal_alignment = 1
 
 [node name="Basla" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1788764221]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "Yeni Oyuna Başla"
+text = "Oyun"
+
+[node name="KlasikMod" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Klasik Mod"
 
 [node name="YikimBulmacasi" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+visible = false
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "Yıkım Bulmacası"
+
+[node name="YankiZinciri" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel"]
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Yankı Zinciri"
 
 [node name="NasilOynanir" type="Button" parent="GuvenliAlan/IcerikKaydirici/Ortala/Panel" unique_id=1752332146]
 layout_mode = 2
@@ -213,7 +226,7 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Vazgeç"
 
-[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/Basla" to="." method="_on_basla_pressed"]
+[connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/Basla" to="." method="_on_oyun_menu_pressed"]
 [connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/NasilOynanir" to="." method="_on_nasil_oynanir_pressed"]
 [connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/Ayarlar" to="." method="_on_ayarlar_pressed"]
 [connection signal="pressed" from="GuvenliAlan/IcerikKaydirici/Ortala/Panel/DevamEt" to="." method="_on_devam_et_pressed"]
