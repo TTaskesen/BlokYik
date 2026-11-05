@@ -121,6 +121,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "Hedef: 0 / 20"
 
+[node name="KapsulGorevi" type="Label" parent="Arayuz/BilgiPaneli/Kenar/Icerik"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.58, 0.32, 1)
+theme_override_font_sizes/font_size = 14
+text = "Kapsül görevi: 0 / 3"
+autowrap_mode = 2
+
 [node name="SonrakiPaneli" type="ColorRect" parent="Arayuz"]
 layout_mode = 0
 offset_left = 520.0
@@ -241,37 +248,47 @@ one_shot = true
 layout_mode = 0
 offset_left = 120.0
 offset_top = 765.0
-offset_right = 230.0
+offset_right = 210.0
 offset_bottom = 830.0
 theme_override_font_sizes/font_size = 32
 text = "←"
 
 [node name="Dondur" type="Button" parent="Arayuz"]
 layout_mode = 0
-offset_left = 250.0
+offset_left = 220.0
 offset_top = 765.0
-offset_right = 360.0
+offset_right = 310.0
 offset_bottom = 830.0
 theme_override_font_sizes/font_size = 32
 text = "↻"
 
 [node name="Sag" type="Button" parent="Arayuz"]
 layout_mode = 0
-offset_left = 380.0
+offset_left = 320.0
 offset_top = 765.0
-offset_right = 490.0
+offset_right = 410.0
 offset_bottom = 830.0
 theme_override_font_sizes/font_size = 32
 text = "→"
 
 [node name="Asagi" type="Button" parent="Arayuz"]
 layout_mode = 0
-offset_left = 510.0
+offset_left = 420.0
 offset_top = 765.0
-offset_right = 620.0
+offset_right = 510.0
 offset_bottom = 830.0
 theme_override_font_sizes/font_size = 32
 text = "↓"
+
+[node name="GeriAl" type="Button" parent="Arayuz"]
+layout_mode = 0
+offset_left = 520.0
+offset_top = 765.0
+offset_right = 700.0
+offset_bottom = 830.0
+theme_override_font_sizes/font_size = 18
+text = "Son Parçayı Geri Al"
+disabled = true
 
 [node name="OyunBitti" type="PanelContainer" parent="Arayuz"]
 layout_mode = 0

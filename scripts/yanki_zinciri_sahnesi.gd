@@ -1,37 +1,91 @@
 extends TemelSahne
 
+const OYUN_OGRETICI := preload("res://scripts/oyun_ogretici.gd")
+
 const SUTUN := 8
 const SATIR := 9
-const BOS := -1
-const BOMBA := 4
+const HEDEF_TASI := 4
 const RENKLER: Array[Color] = [Color("42b7ff"), Color("fa5573"), Color("ffd34e"), Color("63d98b")]
 const RENK_ADLARI := ["mavi", "pembe", "sarı", "yeşil"]
-const SEVIYE_HEDEFLERI := [12, 16, 20, 24, 28]
-const SEVIYE_HAMLELERI := [18, 18, 19, 20, 21]
+const HEDEF_RENGI := Color("ffca45")
+const SEKIL_HEDEFI := 10
 const SEVIYE_ADLARI := ["İlk Yankı", "Çift Patlama", "Dar Koridor", "Bomba Ustası", "Son Rezonans"]
+const KAYITLI_SEKIL_ADLARI := ["Z", "S", "Çizgi", "Kare", "L", "J", "T", "Artı", "Kanca"]
 const KAYIT_YOLU := "user://yanki_zinciri_ilerleme.cfg"
+const YENI_SEKILLER := [
+	{"ad": "P", "kalip": ["00", "00", "0."]},
+	{"ad": "U", "kalip": ["0.0", "000"]},
+	{"ad": "V", "kalip": ["0..", "0..", "000"]},
+	{"ad": "W", "kalip": ["0..", "00.", ".00"]},
+	{"ad": "Y", "kalip": ["0.", "00", "0.", "0."]},
+	{"ad": "F", "kalip": [".00", "00.", ".0."]}
+]
+
+class HedefSekliOnizlemesi extends Control:
+	var hucreler: Array[Vector2i] = []
+	var renk := Color.WHITE
+
+	func goster(yeni_hucreler: Array[Vector2i], yeni_renk: Color) -> void:
+		hucreler = yeni_hucreler.duplicate()
+		renk = yeni_renk
+		queue_redraw()
+
+	func _draw() -> void:
+		if hucreler.is_empty():
+			return
+		var min_x := hucreler[0].x
+		var max_x := hucreler[0].x
+		var min_y := hucreler[0].y
+		var max_y := hucreler[0].y
+		for hucre in hucreler:
+			min_x = mini(min_x, hucre.x)
+			max_x = maxi(max_x, hucre.x)
+			min_y = mini(min_y, hucre.y)
+			max_y = maxi(max_y, hucre.y)
+		var hucre_boyutu := minf((size.x - 16.0) / float(max_x - min_x + 1), (size.y - 16.0) / float(max_y - min_y + 1))
+		var sekil_boyutu := Vector2(max_x - min_x + 1, max_y - min_y + 1) * hucre_boyutu
+		var baslangic := (size - sekil_boyutu) * 0.5
+		for hucre in hucreler:
+			var konum := baslangic + Vector2(hucre - Vector2i(min_x, min_y)) * hucre_boyutu
+			var alan := Rect2(konum, Vector2.ONE * hucre_boyutu).grow(-1.5)
+			draw_rect(alan, Color("090d16"), true)
+			draw_rect(alan.grow(-3.0), renk, true)
 
 var hucreler: Array = []
+var sekil_katalogu: Array[Dictionary] = []
+var aktif_sekil: Dictionary = {}
+var aktif_sekil_donusleri: Array[String] = []
+var aktif_sekil_hucreleri: Array[Vector2i] = []
 var seviye := 0
 var acik_seviye := 0
-var hedef_toplanan := 0
-var kalan_hamle := 0
+var tamamlanan_sekil := 0
+var hamle_sayisi := 0
 var oyun_bitti := false
-var sonuc := ""
 var rng := RandomNumberGenerator.new()
 var hucre_butonlari: Array[Button] = []
 var baslik: Label
 var durum: Label
 var hedef: Label
 var mesaj: Label
+var hedef_onizlemesi: HedefSekliOnizlemesi
 var sonraki_buton: Button
 var tekrar_buton: Button
+var geri_al_butonu: Button
+var secili_hucre := Vector2i(-1, -1)
+var surukleme_baslangici := Vector2i(-1, -1)
+var geri_al_kaydi: Dictionary = {}
+var ogretici_acik := false
 
 func _ready() -> void:
+	sekil_katalogu = _sekil_katalogunu_olustur()
 	acik_seviye = _ilerleme_oku()
 	seviye = mini(acik_seviye, SEVIYE_ADLARI.size() - 1)
 	_arayuzu_olustur()
 	_seviyeyi_yukle(seviye)
+	var ogretici := OYUN_OGRETICI.new()
+	add_child(ogretici)
+	ogretici_acik = ogretici.ilk_oynatmada_goster("yanki_zinciri", ["Üstteki siluet tamamlaman gereken şekli gösterir; altın blokları bul.", "Bir bloğa ve sonra yatay/dikey komşusuna dokun ya da bloğu komşusuna sürükle.", "Şekil tamamlanınca yankı dalgası çevredeki renkleri değiştirir. Her aşamada 10 şekli bitir; Geri Al son değiş tokuşu geri çevirir."])
+	ogretici.kapatildi.connect(func(): ogretici_acik = false)
 
 func _arayuzu_olustur() -> void:
 	var arka_plan := ColorRect.new()
@@ -43,8 +97,8 @@ func _arayuzu_olustur() -> void:
 	guvenli_alan.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	guvenli_alan.add_theme_constant_override("margin_left", 16)
 	guvenli_alan.add_theme_constant_override("margin_right", 16)
-	guvenli_alan.add_theme_constant_override("margin_top", 20)
-	guvenli_alan.add_theme_constant_override("margin_bottom", 20)
+	guvenli_alan.add_theme_constant_override("margin_top", 16)
+	guvenli_alan.add_theme_constant_override("margin_bottom", 16)
 	add_child(guvenli_alan)
 	var kaydirici := ScrollContainer.new()
 	kaydirici.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -53,7 +107,7 @@ func _arayuzu_olustur() -> void:
 	guvenli_alan.add_child(kaydirici)
 	var icerik := VBoxContainer.new()
 	icerik.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	icerik.add_theme_constant_override("separation", 12)
+	icerik.add_theme_constant_override("separation", 10)
 	kaydirici.add_child(icerik)
 	var ust_satir := HBoxContainer.new()
 	ust_satir.add_theme_constant_override("separation", 8)
@@ -74,7 +128,7 @@ func _arayuzu_olustur() -> void:
 	sag_bosluk.custom_minimum_size.x = 88
 	ust_satir.add_child(sag_bosluk)
 	var aciklama := Label.new()
-	aciklama.text = "Yan yana aynı renkte en az iki bloğa dokun. Beşli gruplar bomba bırakır; bombalar zincirleme patlar."
+	aciklama.text = "Hedef şekli altın bloklarla kur. Bir bloğa dokunup komşusuna dokunarak veya bloğu komşusuna sürükleyerek yer değiştir."
 	aciklama.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	aciklama.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	aciklama.add_theme_color_override("font_color", Color("c4cce0"))
@@ -83,32 +137,55 @@ func _arayuzu_olustur() -> void:
 	durum.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	durum.add_theme_font_size_override("font_size", 18)
 	icerik.add_child(durum)
+	var hedef_paneli := PanelContainer.new()
+	hedef_paneli.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var hedef_stili := StyleBoxFlat.new()
+	hedef_stili.bg_color = Color("141b2d")
+	hedef_stili.border_color = Color("f43f5e")
+	hedef_stili.set_border_width_all(2)
+	hedef_stili.set_content_margin_all(8)
+	hedef_paneli.add_theme_stylebox_override("panel", hedef_stili)
+	icerik.add_child(hedef_paneli)
+	var hedef_satiri := HBoxContainer.new()
+	hedef_satiri.add_theme_constant_override("separation", 12)
+	hedef_paneli.add_child(hedef_satiri)
+	hedef_onizlemesi = HedefSekliOnizlemesi.new()
+	hedef_onizlemesi.custom_minimum_size = Vector2(112, 82)
+	hedef_onizlemesi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hedef_satiri.add_child(hedef_onizlemesi)
+	var hedef_yazilari := VBoxContainer.new()
+	hedef_yazilari.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hedef_satiri.add_child(hedef_yazilari)
+	var hedef_basligi := Label.new()
+	hedef_basligi.text = "OLUŞTURULACAK ŞEKİL"
+	hedef_basligi.add_theme_color_override("font_color", Color("a6b4d9"))
+	hedef_yazilari.add_child(hedef_basligi)
 	hedef = Label.new()
-	hedef.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hedef.add_theme_font_size_override("font_size", 17)
-	hedef.add_theme_color_override("font_color", Color("ffd34e"))
-	icerik.add_child(hedef)
+	hedef.add_theme_color_override("font_color", HEDEF_RENGI)
+	hedef_yazilari.add_child(hedef)
 	var tahta_paneli := PanelContainer.new()
 	tahta_paneli.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var tahta_stili := StyleBoxFlat.new()
 	tahta_stili.bg_color = Color("141b2d")
 	tahta_stili.border_color = Color("f43f5e")
 	tahta_stili.set_border_width_all(2)
-	tahta_stili.set_content_margin_all(8)
+	tahta_stili.set_content_margin_all(7)
 	tahta_paneli.add_theme_stylebox_override("panel", tahta_stili)
 	icerik.add_child(tahta_paneli)
 	var izgara := GridContainer.new()
 	izgara.columns = SUTUN
-	izgara.add_theme_constant_override("h_separation", 4)
-	izgara.add_theme_constant_override("v_separation", 4)
+	izgara.add_theme_constant_override("h_separation", 3)
+	izgara.add_theme_constant_override("v_separation", 3)
 	tahta_paneli.add_child(izgara)
+	var hucre_boyutu := clampf((get_viewport_rect().size.x - 71.0) / float(SUTUN), 28.0, 42.0)
 	for i in SUTUN * SATIR:
 		var buton := Button.new()
-		buton.custom_minimum_size = Vector2(38, 38)
+		buton.custom_minimum_size = Vector2.ONE * hucre_boyutu
 		buton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		buton.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		buton.add_theme_font_size_override("font_size", 18)
-		buton.pressed.connect(_hucreye_dokun.bind(i % SUTUN, int(i / SUTUN)))
+		buton.mouse_filter = Control.MOUSE_FILTER_STOP
+		buton.add_theme_font_size_override("font_size", 16)
 		izgara.add_child(buton)
 		hucre_butonlari.append(buton)
 	mesaj = Label.new()
@@ -128,198 +205,276 @@ func _arayuzu_olustur() -> void:
 	tekrar_buton.pressed.connect(func(): _seviyeyi_yukle(seviye))
 	eylemler.add_child(tekrar_buton)
 	sonraki_buton = Button.new()
-	sonraki_buton.text = "Sonraki Bölüm"
+	sonraki_buton.text = "Sonraki Aşama"
 	sonraki_buton.custom_minimum_size = Vector2(164, 52)
 	sonraki_buton.visible = false
 	sonraki_buton.pressed.connect(_sonraki_seviye)
 	eylemler.add_child(sonraki_buton)
-	minimum_dokunma_hedeflerini_uygula(icerik)
+	geri_al_butonu = Button.new()
+	geri_al_butonu.text = "Son Hamleyi Geri Al"
+	geri_al_butonu.custom_minimum_size = Vector2(190, 50)
+	geri_al_butonu.disabled = true
+	geri_al_butonu.pressed.connect(_geri_al)
+	icerik.add_child(geri_al_butonu)
+
+func _sekil_katalogunu_olustur() -> Array[Dictionary]:
+	var katalog: Array[Dictionary] = []
+	for i in ParcaUretici.PARCA_HAVUZU.size():
+		var kalip: Array = ParcaUretici.PARCA_HAVUZU[i].kalip[0]
+		katalog.append({"ad": KAYITLI_SEKIL_ADLARI[i], "hucreler": _kaliptan_hucrelere(kalip)})
+	for yeni_sekil in YENI_SEKILLER:
+		katalog.append({"ad": yeni_sekil.ad, "hucreler": _kaliptan_hucrelere(yeni_sekil.kalip)})
+	return katalog
+
+func _kaliptan_hucrelere(kalip: Array) -> Array[Vector2i]:
+	var sekil_hucreleri: Array[Vector2i] = []
+	for y in kalip.size():
+		for x in kalip[y].length():
+			if kalip[y][x] == "0":
+				sekil_hucreleri.append(Vector2i(x, y))
+	return sekil_hucreleri
+
+func _sekil_anahtari(hucreler_: Array[Vector2i]) -> String:
+	if hucreler_.is_empty():
+		return ""
+	var min_x := hucreler_[0].x
+	var min_y := hucreler_[0].y
+	for hucre in hucreler_:
+		min_x = mini(min_x, hucre.x)
+		min_y = mini(min_y, hucre.y)
+	var normallesmis: Array[Vector2i] = []
+	for hucre in hucreler_:
+		normallesmis.append(hucre - Vector2i(min_x, min_y))
+	normallesmis.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y < b.y or (a.y == b.y and a.x < b.x))
+	var oge_metni: PackedStringArray = []
+	for hucre in normallesmis:
+		oge_metni.append("%d,%d" % [hucre.x, hucre.y])
+	return ";".join(oge_metni)
+
+func _hedef_donus_anahtarlari(hucreler_: Array[Vector2i]) -> Array[String]:
+	var anahtarlar: Array[String] = []
+	var donen := hucreler_.duplicate()
+	for _donus in 4:
+		var anahtar := _sekil_anahtari(donen)
+		if anahtar not in anahtarlar:
+			anahtarlar.append(anahtar)
+		var yeni_donen: Array[Vector2i] = []
+		for hucre in donen:
+			yeni_donen.append(Vector2i(-hucre.y, hucre.x))
+		donen = yeni_donen
+	return anahtarlar
 
 func _seviyeyi_yukle(yeni_seviye: int) -> void:
 	seviye = clampi(yeni_seviye, 0, SEVIYE_ADLARI.size() - 1)
-	hedef_toplanan = 0
-	kalan_hamle = SEVIYE_HAMLELERI[seviye]
+	tamamlanan_sekil = 0
+	hamle_sayisi = 0
 	oyun_bitti = false
-	sonuc = ""
-	rng.seed = 84721 + seviye * 7919
+	rng.randomize()
+	secili_hucre = Vector2i(-1, -1)
+	surukleme_baslangici = Vector2i(-1, -1)
 	hucreler.clear()
 	for y in SATIR:
 		var satir: Array[int] = []
 		for x in SUTUN:
-			satir.append(rng.randi_range(0, _kullanilan_renk_sayisi() - 1))
+			satir.append(rng.randi_range(0, RENKLER.size() - 1))
 		hucreler.append(satir)
 	sonraki_buton.visible = false
 	tekrar_buton.visible = false
-	mesaj.text = "Aynı renkten büyük grup, daha geniş patlama zinciri oluşturur."
+	_yeni_hedef_sekli_olustur()
+	mesaj.text = "Altın blokları hedefte gösterilen şekle göre yan yana getir."
 	_arayuzu_guncelle()
 
-func _hucreye_dokun(x: int, y: int) -> void:
-	if oyun_bitti or y < 0 or y >= SATIR or x < 0 or x >= SUTUN:
+func _yeni_hedef_sekli_olustur() -> void:
+	var katalog_indeksi := (tamamlanan_sekil + seviye * 3 + rng.randi_range(0, sekil_katalogu.size() - 1)) % sekil_katalogu.size()
+	aktif_sekil = sekil_katalogu[katalog_indeksi]
+	aktif_sekil_hucreleri = aktif_sekil.hucreler.duplicate()
+	aktif_sekil_donusleri = _hedef_donus_anahtarlari(aktif_sekil_hucreleri)
+	var gereken_tas_sayisi := aktif_sekil_hucreleri.size()
+	for y in SATIR:
+		for x in SUTUN:
+			if int(hucreler[y][x]) == HEDEF_TASI:
+				hucreler[y][x] = rng.randi_range(0, RENKLER.size() - 1)
+	var mumkun_hucreler: Array[Vector2i] = []
+	for y in SATIR:
+		for x in SUTUN:
+			mumkun_hucreler.append(Vector2i(x, y))
+	var konumlar: Array[Vector2i] = []
+	var bulundu := false
+	for _deneme in 200:
+		konumlar.clear()
+		var adaylar := mumkun_hucreler.duplicate()
+		adaylar.shuffle()
+		for i in gereken_tas_sayisi:
+			konumlar.append(adaylar[i])
+			var nokta := konumlar[i]
+			hucreler[nokta.y][nokta.x] = HEDEF_TASI
+		if not _hedef_sekli_tamamlandi():
+			bulundu = true
+			break
+		for nokta in konumlar:
+			hucreler[nokta.y][nokta.x] = rng.randi_range(0, RENKLER.size() - 1)
+	if not bulundu:
+		konumlar.clear()
+		for i in gereken_tas_sayisi:
+			konumlar.append(Vector2i(i, 0))
+		for nokta in konumlar:
+			hucreler[nokta.y][nokta.x] = HEDEF_TASI
+	hedef_onizlemesi.goster(aktif_sekil_hucreleri, HEDEF_RENGI)
+
+func _hucreye_dokun(konum: Vector2i) -> void:
+	if oyun_bitti or not _hucre_konumu_gecerli(konum):
 		return
-	var grup := _bagli_grubu_bul(Vector2i(x, y))
-	var parca_rengi: int = hucreler[y][x]
-	if parca_rengi == BOS:
-		return
-	if parca_rengi == BOMBA:
-		grup = [Vector2i(x, y)]
-	if parca_rengi != BOMBA and grup.size() < 2:
-		mesaj.text = "Patlatmak için aynı renkten en az iki bitişik blok seç."
-		return
-	kalan_hamle -= 1
-	var bomba_birak := parca_rengi != BOMBA and grup.size() >= 5
-	var temizlenen := _grubu_patlat(grup)
-	if bomba_birak and hucreler[y][x] == BOS:
-		hucreler[y][x] = BOMBA
-	_yercekimi_ve_doldurma()
-	var zincir := _zincir_eslesmelerini_temizle()
-	var karistirildi := false
-	if hedef_toplanan < SEVIYE_HEDEFLERI[seviye] and not _hamle_var_mi():
-		_tahtayi_karistir()
-		karistirildi = true
-	if hedef_toplanan >= SEVIYE_HEDEFLERI[seviye]:
-		_seviyeyi_kazan()
-	elif kalan_hamle <= 0:
-		_oyunu_kaybet()
+	if secili_hucre.x < 0:
+		secili_hucre = konum
+		mesaj.text = "Şimdi yatay veya dikey komşu bloğa dokun. Sürükleyip bırakmak da olur."
+	elif konum == secili_hucre:
+		secili_hucre = Vector2i(-1, -1)
+		mesaj.text = "Seçim kaldırıldı. Bir altın bloğa dokun."
+	elif _komsu_hucre_mi(secili_hucre, konum):
+		_bloklari_degistir(secili_hucre, konum)
 	else:
-		var aciklama := "%d blok patladı." % temizlenen
-		if bomba_birak:
-			aciklama += " Beşli grup bomba bıraktı!"
-		if zincir > 0:
-			aciklama += " %d otomatik yankı zinciri!" % zincir
-		if karistirildi:
-			aciklama += " Tahta yeni hamle için karıştırıldı."
-		mesaj.text = aciklama
+		secili_hucre = konum
+		mesaj.text = "Yeni blok seçildi. Yalnızca yatay veya dikey komşusuyla yer değiştirebilir."
 	_arayuzu_guncelle()
 
-func _bagli_grubu_bul(baslangic: Vector2i) -> Array[Vector2i]:
-	var sonuc_grubu: Array[Vector2i] = []
-	var renk: int = hucreler[baslangic.y][baslangic.x]
-	if renk < 0 or renk >= RENKLER.size():
-		return sonuc_grubu
-	var ziyaret_edildi: Dictionary = {}
-	var kuyruk: Array[Vector2i] = [baslangic]
-	ziyaret_edildi[baslangic] = true
-	while not kuyruk.is_empty():
-		var hucre: Vector2i = kuyruk.pop_front()
-		sonuc_grubu.append(hucre)
-		for yon in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			var komsu: Vector2i = hucre + yon
-			if komsu.x < 0 or komsu.x >= SUTUN or komsu.y < 0 or komsu.y >= SATIR or ziyaret_edildi.has(komsu):
-				continue
-			if int(hucreler[komsu.y][komsu.x]) == renk:
-				ziyaret_edildi[komsu] = true
-				kuyruk.append(komsu)
-	return sonuc_grubu
+func _input(olay: InputEvent) -> void:
+	if ogretici_acik:
+		return
+	if oyun_bitti:
+		return
+	var basildi := false
+	var birakildi := false
+	var isaretci := Vector2.ZERO
+	if olay is InputEventScreenTouch:
+		basildi = olay.pressed
+		birakildi = not olay.pressed
+		isaretci = olay.position
+	elif olay is InputEventMouseButton and olay.button_index == MOUSE_BUTTON_LEFT:
+		basildi = olay.pressed
+		birakildi = not olay.pressed
+		isaretci = olay.position
+	else:
+		return
+	var konum := _isaretci_hucresini_al(isaretci)
+	if basildi and _hucre_konumu_gecerli(konum):
+		surukleme_baslangici = konum
+		get_viewport().set_input_as_handled()
+	elif birakildi and _hucre_konumu_gecerli(surukleme_baslangici):
+		if _hucre_konumu_gecerli(konum) and konum != surukleme_baslangici and _komsu_hucre_mi(surukleme_baslangici, konum):
+			_bloklari_degistir(surukleme_baslangici, konum)
+		elif konum == surukleme_baslangici:
+			_hucreye_dokun(konum)
+		elif _hucre_konumu_gecerli(konum):
+			secili_hucre = surukleme_baslangici
+			mesaj.text = "Blokları yalnızca yanındaki hücreyle değiştirebilirsin."
+			_arayuzu_guncelle()
+		surukleme_baslangici = Vector2i(-1, -1)
+		get_viewport().set_input_as_handled()
+	elif birakildi:
+		surukleme_baslangici = Vector2i(-1, -1)
 
-func _grubu_patlat(grup: Array[Vector2i]) -> int:
-	var temizlenecek: Dictionary = {}
-	var bomba_kuyrugu: Array[Vector2i] = []
-	for hucre in grup:
-		temizlenecek[hucre] = true
-		if int(hucreler[hucre.y][hucre.x]) == BOMBA:
-			bomba_kuyrugu.append(hucre)
-	while not bomba_kuyrugu.is_empty():
-		var bomba: Vector2i = bomba_kuyrugu.pop_front()
-		for y in range(maxi(0, bomba.y - 1), mini(SATIR, bomba.y + 2)):
-			for x in range(maxi(0, bomba.x - 1), mini(SUTUN, bomba.x + 2)):
-				var hedef_hucre := Vector2i(x, y)
-				if temizlenecek.has(hedef_hucre):
-					continue
-				if int(hucreler[y][x]) == BOMBA:
-					bomba_kuyrugu.append(hedef_hucre)
-				temizlenecek[hedef_hucre] = true
-	var temizlenen := 0
-	for hucre in temizlenecek:
-		var renk: int = hucreler[hucre.y][hucre.x]
-		if renk == seviye % RENKLER.size():
-			hedef_toplanan += 1
-		if renk != BOS:
-			temizlenen += 1
-		hucreler[hucre.y][hucre.x] = BOS
-	return temizlenen
+func _isaretci_hucresini_al(nokta: Vector2) -> Vector2i:
+	for indeks in hucre_butonlari.size():
+		if hucre_butonlari[indeks].get_global_rect().has_point(nokta):
+			return Vector2i(indeks % SUTUN, floori(float(indeks) / float(SUTUN)))
+	return Vector2i(-1, -1)
 
-func _yercekimi_ve_doldurma() -> void:
-	for x in SUTUN:
-		var kalan: Array[int] = []
-		for y in range(SATIR - 1, -1, -1):
-			var renk: int = hucreler[y][x]
-			if renk != BOS:
-				kalan.append(renk)
-		for y in SATIR:
-			hucreler[y][x] = BOS
-		for indeks in kalan.size():
-			hucreler[SATIR - 1 - indeks][x] = kalan[indeks]
-		for y in range(SATIR - kalan.size() - 1, -1, -1):
-			hucreler[y][x] = rng.randi_range(0, _kullanilan_renk_sayisi() - 1)
+func _hucre_konumu_gecerli(konum: Vector2i) -> bool:
+	return konum.x >= 0 and konum.x < SUTUN and konum.y >= 0 and konum.y < SATIR
 
-func _zincir_eslesmelerini_temizle() -> int:
-	var zincir := 0
-	while zincir < 8:
-		var grup := _ilk_buyuk_grubu_bul()
-		if grup.is_empty():
-			break
-		_grubu_patlat(grup)
-		_yercekimi_ve_doldurma()
-		zincir += 1
-		if hedef_toplanan >= SEVIYE_HEDEFLERI[seviye]:
-			break
-	return zincir
+func _komsu_hucre_mi(a: Vector2i, b: Vector2i) -> bool:
+	return absi(a.x - b.x) + absi(a.y - b.y) == 1
 
-func _ilk_buyuk_grubu_bul() -> Array[Vector2i]:
-	var bakilan: Dictionary = {}
+func _bloklari_degistir(a: Vector2i, b: Vector2i) -> void:
+	geri_al_kaydi = {
+		"hucreler": hucreler.duplicate(true),
+		"aktif_sekil": aktif_sekil.duplicate(true),
+		"aktif_sekil_hucreleri": aktif_sekil_hucreleri.duplicate(),
+		"aktif_sekil_donusleri": aktif_sekil_donusleri.duplicate(),
+		"tamamlanan": tamamlanan_sekil,
+		"hamle": hamle_sayisi,
+		"seviye": seviye,
+		"acik_seviye": acik_seviye,
+		"oyun_bitti": oyun_bitti
+	}
+	var gecici: int = hucreler[a.y][a.x]
+	hucreler[a.y][a.x] = hucreler[b.y][b.x]
+	hucreler[b.y][b.x] = gecici
+	hamle_sayisi += 1
+	secili_hucre = Vector2i(-1, -1)
+	if _hedef_sekli_tamamlandi():
+		tamamlanan_sekil += 1
+		var dalga_hucreleri := _yanki_dalgasini_uygula()
+		if tamamlanan_sekil >= SEKIL_HEDEFI:
+			_seviyeyi_kazan()
+		else:
+			mesaj.text = "Şekil tamamlandı! Yankı dalgası komşu renkleri dönüştürdü."
+			_yeni_hedef_sekli_olustur()
+			_yanki_dalgasini_goster(dalga_hucreleri)
+	else:
+		mesaj.text = "Bloklar yer değiştirdi. Altın blokları hedef şekle göre diz."
+	_arayuzu_guncelle()
+
+func _yanki_dalgasini_uygula() -> Array[Vector2i]:
+	var altin_hucreler: Array[Vector2i] = []
+	var dalga: Dictionary = {}
 	for y in SATIR:
 		for x in SUTUN:
-			var hucre := Vector2i(x, y)
-			var renk: int = hucreler[y][x]
-			if renk < 0 or renk >= RENKLER.size() or bakilan.has(hucre):
-				continue
-			var grup := _bagli_grubu_bul(hucre)
-			for oge in grup:
-				bakilan[oge] = true
-			if grup.size() >= 3:
-				return grup
-	return []
+			if int(hucreler[y][x]) == HEDEF_TASI:
+				var hucre := Vector2i(x, y)
+				altin_hucreler.append(hucre)
+	for merkez in altin_hucreler:
+		var yonler: Array[Vector2i] = [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+		for yon in yonler:
+			var komsu: Vector2i = merkez + yon
+			if _hucre_konumu_gecerli(komsu) and int(hucreler[komsu.y][komsu.x]) != HEDEF_TASI:
+				dalga[komsu] = true
+	var etkilenenler: Array[Vector2i] = []
+	for hucre in dalga:
+		var eski_renk: int = hucreler[hucre.y][hucre.x]
+		hucreler[hucre.y][hucre.x] = posmod(eski_renk + 1, RENKLER.size())
+		etkilenenler.append(hucre)
+	return etkilenenler
 
-func _kullanilan_renk_sayisi() -> int:
-	return mini(RENKLER.size(), 3 + int(seviye / 2))
+func _yanki_dalgasini_goster(hucre_listesi: Array[Vector2i]) -> void:
+	for hucre in hucre_listesi:
+		var buton := hucre_butonlari[hucre.y * SUTUN + hucre.x]
+		buton.modulate = Color("fff0b0")
+		var parilti := create_tween()
+		parilti.tween_property(buton, "modulate", Color.WHITE, 0.45)
 
-func _hamle_var_mi() -> bool:
+func _geri_al() -> void:
+	if geri_al_kaydi.is_empty():
+		return
+	hucreler = geri_al_kaydi.hucreler.duplicate(true)
+	aktif_sekil = geri_al_kaydi.aktif_sekil.duplicate(true)
+	aktif_sekil_hucreleri = geri_al_kaydi.aktif_sekil_hucreleri.duplicate()
+	aktif_sekil_donusleri = geri_al_kaydi.aktif_sekil_donusleri.duplicate()
+	tamamlanan_sekil = int(geri_al_kaydi.tamamlanan)
+	hamle_sayisi = int(geri_al_kaydi.hamle)
+	seviye = int(geri_al_kaydi.seviye)
+	acik_seviye = int(geri_al_kaydi.acik_seviye)
+	oyun_bitti = bool(geri_al_kaydi.oyun_bitti)
+	geri_al_kaydi.clear()
+	var ayarlar := ConfigFile.new()
+	ayarlar.set_value("ilerleme", "acik_seviye", acik_seviye)
+	ayarlar.save(KAYIT_YOLU)
+	mesaj.text = "Son değiş tokuş geri alındı."
+	_arayuzu_guncelle()
+
+func _hedef_sekli_tamamlandi() -> bool:
+	var altin_hucreler: Array[Vector2i] = []
 	for y in SATIR:
 		for x in SUTUN:
-			var renk: int = hucreler[y][x]
-			if renk == BOMBA:
-				return true
-			if renk < 0 or renk >= RENKLER.size():
-				continue
-			if x + 1 < SUTUN and int(hucreler[y][x + 1]) == renk:
-				return true
-			if y + 1 < SATIR and int(hucreler[y + 1][x]) == renk:
-				return true
-	return false
-
-func _tahtayi_karistir() -> void:
-	var taslar: Array[int] = []
-	for y in SATIR:
-		for x in SUTUN:
-			taslar.append(int(hucreler[y][x]))
-	for i in range(taslar.size() - 1, 0, -1):
-		var j := rng.randi_range(0, i)
-		var gecici: int = taslar[i]
-		taslar[i] = taslar[j]
-		taslar[j] = gecici
-	var indeks := 0
-	for y in SATIR:
-		for x in SUTUN:
-			hucreler[y][x] = taslar[indeks]
-			indeks += 1
-	if not _hamle_var_mi():
-		var renk := rng.randi_range(0, _kullanilan_renk_sayisi() - 1)
-		hucreler[0][0] = renk
-		hucreler[0][1] = renk
+			if int(hucreler[y][x]) == HEDEF_TASI:
+				altin_hucreler.append(Vector2i(x, y))
+	if altin_hucreler.size() != aktif_sekil_hucreleri.size():
+		return false
+	return _sekil_anahtari(altin_hucreler) in aktif_sekil_donusleri
 
 func _seviyeyi_kazan() -> void:
 	oyun_bitti = true
-	sonuc = "TEBRİKLER! Hedef yankı kristallerini topladın."
+	mesaj.text = "TEBRİKLER! Bu aşamadaki 10 şeklin tamamını kurdun."
 	acik_seviye = maxi(acik_seviye, mini(seviye + 1, SEVIYE_ADLARI.size() - 1))
 	var ayarlar := ConfigFile.new()
 	ayarlar.set_value("ilerleme", "acik_seviye", acik_seviye)
@@ -327,41 +482,35 @@ func _seviyeyi_kazan() -> void:
 	sonraki_buton.visible = seviye < SEVIYE_ADLARI.size() - 1
 	tekrar_buton.visible = true
 
-func _oyunu_kaybet() -> void:
-	oyun_bitti = true
-	sonuc = "Hamleler bitti. Bu bölümü yeniden deneyebilirsin."
-	tekrar_buton.visible = true
-
 func _sonraki_seviye() -> void:
 	if seviye < SEVIYE_ADLARI.size() - 1 and seviye < acik_seviye:
 		_seviyeyi_yukle(seviye + 1)
 
 func _arayuzu_guncelle() -> void:
-	durum.text = "BÖLÜM %d / 5  •  %s  •  Hamle: %d" % [seviye + 1, SEVIYE_ADLARI[seviye], kalan_hamle]
-	hedef.text = "%s kristal: %d / %d" % [RENK_ADLARI[seviye % RENKLER.size()].capitalize(), hedef_toplanan, SEVIYE_HEDEFLERI[seviye]]
+	durum.text = "AŞAMA %d / 5  •  %s  •  Değişim: %d" % [seviye + 1, SEVIYE_ADLARI[seviye], hamle_sayisi]
+	hedef.text = "%s şekli  •  %d blok" % [str(aktif_sekil.ad), aktif_sekil_hucreleri.size()]
 	if oyun_bitti:
-		mesaj.text = sonuc
+		durum.text = "AŞAMA %d / 5  •  %s  •  %d / %d ŞEKİL" % [seviye + 1, SEVIYE_ADLARI[seviye], tamamlanan_sekil, SEKIL_HEDEFI]
+	geri_al_butonu.disabled = geri_al_kaydi.is_empty()
 	for y in SATIR:
 		for x in SUTUN:
 			var buton := hucre_butonlari[y * SUTUN + x]
 			var renk: int = hucreler[y][x]
-			buton.disabled = oyun_bitti or renk == BOS
-			if renk == BOMBA:
-				buton.text = "✦"
-				buton.add_theme_color_override("font_color", Color.WHITE)
-				buton.add_theme_stylebox_override("normal", _hucre_stili(Color("ff8c42")))
-			elif renk >= 0 and renk < RENKLER.size():
-				buton.text = ""
-				buton.add_theme_stylebox_override("normal", _hucre_stili(RENKLER[renk]))
-			else:
-				buton.text = ""
-				buton.add_theme_stylebox_override("normal", _hucre_stili(Color("1b2233")))
+			buton.disabled = oyun_bitti
+			buton.text = "◆" if renk == HEDEF_TASI else ""
+			buton.add_theme_color_override("font_color", Color("523500") if renk == HEDEF_TASI else Color.WHITE)
+			buton.add_theme_stylebox_override("normal", _hucre_stili(HEDEF_RENGI if renk == HEDEF_TASI else RENKLER[renk], renk == HEDEF_TASI, Vector2i(x, y) == secili_hucre))
+			buton.add_theme_stylebox_override("hover", _hucre_stili(HEDEF_RENGI if renk == HEDEF_TASI else RENKLER[renk], true, Vector2i(x, y) == secili_hucre))
+			buton.add_theme_stylebox_override("pressed", _hucre_stili(HEDEF_RENGI if renk == HEDEF_TASI else RENKLER[renk], true, true))
 
-func _hucre_stili(renk: Color) -> StyleBoxFlat:
+func _hucre_stili(renk: Color, hedef_tasi_mi: bool, secili_mi: bool) -> StyleBoxFlat:
 	var stil := StyleBoxFlat.new()
 	stil.bg_color = renk
 	stil.set_corner_radius_all(5)
 	stil.set_content_margin_all(0)
+	if hedef_tasi_mi or secili_mi:
+		stil.border_color = Color.WHITE if secili_mi else Color("fff1b8")
+		stil.set_border_width_all(2 if secili_mi else 1)
 	return stil
 
 func _ilerleme_oku() -> int:

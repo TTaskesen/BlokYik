@@ -36,26 +36,36 @@ func parcayi_kilitle(parca: BlokParcasi) -> void:
 func yikim_kapsulunu_patlat(parca: BlokParcasi) -> Dictionary:
 	if parca == null or not parca.yikim_kapsulu:
 		return {"temizlenen": 0, "etkilenen_sutunlar": []}
-	# Kapsülün her hücresi 3×3 etki alanı üretir; bitişik alanlar birleşir.
-	# Böylece 2×2 kapsül yere oturduğunda toplam etki alanı 4×4 olur.
-	var yikim_alani: Dictionary = {}
-	var etkilenen_sutunlar: Dictionary = {}
+	var tahmin := yikim_kapsulu_etkisini_al(parca)
+	var yikim_alani: Array[Vector2i] = tahmin.hucreler
+	var temizlenen := 0
+	for hucre in yikim_alani:
+		if kilitli_hucreler.erase(hucre):
+			temizlenen += 1
+	return {"temizlenen": temizlenen, "etkilenen_sutunlar": tahmin.etkilenen_sutunlar}
+
+func yikim_kapsulu_etkisini_al(parca: BlokParcasi) -> Dictionary:
+	if parca == null or not parca.yikim_kapsulu:
+		return {"hucreler": [], "etkilenen_sutunlar": []}
+	# Her 2×2 kapsül hücresi 3×3 alan üretir; birleşince kapsülün
+	# kendisini de kapsayan 4×4 etki alanı görünür.
+	var alan: Dictionary = {}
+	var sutun_sozlugu: Dictionary = {}
 	for merkez in parca.hucreler():
 		for y in range(merkez.y - 1, merkez.y + 2):
 			for x in range(merkez.x - 1, merkez.x + 2):
 				var hucre := Vector2i(x, y)
 				if hucre_aktif_mi(hucre):
-					yikim_alani[hucre] = true
-					etkilenen_sutunlar[x] = true
-	var temizlenen := 0
-	for hucre in yikim_alani:
-		if kilitli_hucreler.erase(hucre):
-			temizlenen += 1
+					alan[hucre] = true
+					sutun_sozlugu[x] = true
+	var hucre_listesi: Array[Vector2i] = []
+	for hucre in alan:
+		hucre_listesi.append(hucre)
 	var sutunlar: Array[int] = []
-	for x in etkilenen_sutunlar:
+	for x in sutun_sozlugu:
 		sutunlar.append(int(x))
 	sutunlar.sort()
-	return {"temizlenen": temizlenen, "etkilenen_sutunlar": sutunlar}
+	return {"hucreler": hucre_listesi, "etkilenen_sutunlar": sutunlar}
 
 func etkilenen_sutunlarda_yercekimi_uygula(sutunlar: Array) -> int:
 	var dusen_tas_sayisi := 0

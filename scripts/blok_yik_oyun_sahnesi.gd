@@ -1,5 +1,6 @@
 extends TemelSahne
 
+const OYUN_OGRETICI := preload("res://scripts/oyun_ogretici.gd")
 const BLOK_BOYUTU := 32
 const REFERANS_TAHTA_GENISLIGI := 10
 const REFERANS_TAHTA_YUKSEKLIGI := 20
@@ -32,6 +33,10 @@ var kayit_uyarisi := ""
 var _yerlesim_olcegi := 1.0
 var _yerlesim_ofseti := Vector2.ZERO
 var guncel_level_adi := "Klasik Başlangıç"
+var kapsul_gorevi_ilerleme := 0
+const KAPSUL_GOREVI_HEDEFI := 3
+var geri_al_kaydi: Dictionary = {}
+var ogretici_acik := false
 var tema_tahta_rengi := Color("202535")
 var tema_izgara_rengi := Color("4d566d")
 var tema_vurgu_rengi := Color("f43f5e")
@@ -53,6 +58,7 @@ var tema_vurgu_rengi := Color("f43f5e")
 @onready var seviye_gecis_zamanlayicisi: Timer = $Arayuz/SeviyeGecisZamanlayicisi
 @onready var sonuc_basligi: Label = $Arayuz/OyunBitti/Icerik/Baslik
 @onready var sonuc_aciklamasi: Label = $Arayuz/OyunBitti/Icerik/Aciklama
+@onready var geri_al_butonu: Button = $Arayuz/GeriAl
 
 func focusu_birak() -> void:
 	var vp = get_viewport()
@@ -86,6 +92,7 @@ func _ready() -> void:
 	$Arayuz/DuraklatMenu/DuraklatIcerik/YenidenBaslatBtn.pressed.connect(func(): yeniden_baslat(); focusu_birak())
 	$Arayuz/DuraklatMenu/DuraklatIcerik/AnaMenuBtn.pressed.connect(func(): menuye_don(); focusu_birak())
 	$Arayuz/SesToggle.pressed.connect(func(): ses_toggle(); focusu_birak())
+	geri_al_butonu.pressed.connect(func(): _geri_al(); focusu_birak())
 	mobil_oyun_yerlesimini_uygula()
 	focusu_birak()
 	resized.connect(yerlesimi_guncelle)
@@ -95,6 +102,10 @@ func _ready() -> void:
 	ses_yoneticisi.uygulama_arka_plan_durumu_degisti.connect(uygulama_arka_plan_durumunu_isle)
 	if ses_yoneticisi.uygulama_arka_planda:
 		uygulama_arka_plan_durumunu_isle(true)
+	var ogretici := OYUN_OGRETICI.new()
+	add_child(ogretici)
+	ogretici_acik = ogretici.ilk_oynatmada_goster("klasik", ["Parçaları satırları tamamlayacak şekilde yerleştir; satırlar puan ve hız kazandırır.", "Turuncu kapsülün çevresindeki çizgili 4×4 alanı gör. Yere oturunca blokları patlatır ve sütunları çökertir.", "Kapsülle en az 4 bloğu tek patlamada temizleyerek Kapsül Görevi'nde ilerle. Son kilitlenen parçayı Geri Al ile geri çevirebilirsin."])
+	ogretici.kapatildi.connect(func(): ogretici_acik = false)
 
 func _process(delta: float) -> void:
 	if not oyun_aktif or oyun_duraklatildi:
@@ -108,6 +119,8 @@ func _process(delta: float) -> void:
 		parcayi_dusur()
 
 func _unhandled_input(olay: InputEvent) -> void:
+	if ogretici_acik:
+		return
 	if olay.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
 		geri_istegini_isle()
@@ -221,6 +234,7 @@ func parcayi_dusur() -> void:
 	aktif_parca.konum.y += 1
 	if not tahta.gecerli_mi(aktif_parca):
 		aktif_parca.konum.y -= 1
+		_geri_al_kaydi_al()
 		tahta.parcayi_kilitle(aktif_parca)
 		if aktif_parca.yikim_kapsulu:
 			var patlama_sonucu: Dictionary = tahta.yikim_kapsulunu_patlat(aktif_parca)
@@ -229,6 +243,13 @@ func parcayi_dusur() -> void:
 			skor_yoneticisi.skor += temizlenen_hucre * 25 + dusen_taslar * 10
 			if temizlenen_hucre > 0:
 				yikim_kapsulu_geri_bildirimi(temizlenen_hucre, dusen_taslar)
+			if temizlenen_hucre >= 4 and kapsul_gorevi_ilerleme < KAPSUL_GOREVI_HEDEFI:
+				kapsul_gorevi_ilerleme += 1
+				if kapsul_gorevi_ilerleme == KAPSUL_GOREVI_HEDEFI:
+					skor_yoneticisi.skor += 500
+					seviye_gecis_etiketi.text = "KAPSÜL GÖREVİ TAMAMLANDI!\n+500 puan"
+					seviye_gecis_etiketi.visible = true
+					seviye_gecis_zamanlayicisi.start(2.0)
 		var dolu_satirlar := tahta.dolu_satirlari_bul()
 		if not dolu_satirlar.is_empty():
 			satir_silme_animasyonunu_oynat(dolu_satirlar)
@@ -289,6 +310,69 @@ func yikim_kapsulu_geri_bildirimi(temizlenen_hucre: int, dusen_taslar: int) -> v
 	seviye_gecis_etiketi.visible = true
 	seviye_gecis_zamanlayicisi.start(1.5)
 
+func _geri_al_kaydi_al() -> void:
+	geri_al_kaydi = {
+		"kilitli": tahta.kilitli_hucreler.duplicate(true),
+		"aktif_hucreler": tahta.aktif_hucreler.keys().duplicate(),
+		"genislik": tahta.genislik,
+		"yukseklik": tahta.yukseklik,
+		"aktif": _parcayi_kopyala(aktif_parca),
+		"sonraki": _parcayi_kopyala(sonraki_parca),
+		"skor": skor_yoneticisi.skor,
+		"silinen_satir": skor_yoneticisi.silinen_satir,
+		"ana_level": skor_yoneticisi.ana_level,
+		"alt_seviye": skor_yoneticisi.alt_seviye,
+		"asama_satirlari": skor_yoneticisi.asama_satirlari,
+		"dusme_araligi": dusme_araligi,
+		"kapsul_gorevi": kapsul_gorevi_ilerleme
+	}
+	geri_al_butonu.disabled = false
+
+func _parcayi_kopyala(kaynak: BlokParcasi) -> BlokParcasi:
+	if kaynak == null:
+		return null
+	var kopya := BlokParcasi.new(kaynak.kalip, kaynak.renk, kaynak.yikim_kapsulu)
+	kopya.konum = kaynak.konum
+	kopya.donus = kaynak.donus
+	return kopya
+
+func _geri_al() -> void:
+	if geri_al_kaydi.is_empty():
+		return
+	var kayit := geri_al_kaydi
+	_satir_animasyon_id += 1
+	satir_silme_animasyonu_aktif = false
+	yanan_satirlar.clear()
+	tahta = OyunTahtasi.new(int(kayit.genislik), int(kayit.yukseklik), kayit.aktif_hucreler)
+	tahta.kilitli_hucreler = kayit.kilitli.duplicate(true)
+	aktif_parca = _parcayi_kopyala(kayit.aktif)
+	sonraki_parca = _parcayi_kopyala(kayit.sonraki)
+	skor_yoneticisi.skor = int(kayit.skor)
+	skor_yoneticisi.silinen_satir = int(kayit.silinen_satir)
+	skor_yoneticisi.ana_level = int(kayit.ana_level)
+	skor_yoneticisi.alt_seviye = int(kayit.alt_seviye)
+	skor_yoneticisi.asama_satirlari = int(kayit.asama_satirlari)
+	dusme_araligi = float(kayit.dusme_araligi)
+	kapsul_gorevi_ilerleme = int(kayit.kapsul_gorevi)
+	var ayar := level_yoneticisi.level_ayari_al(skor_yoneticisi.ana_level)
+	parca_uretici = ParcaUretici.new(ayar.parca_havuzu, float(ayar.get("yikim_kapsulu_ihtimali", 0.1)))
+	level_kimligini_uygula(ayar)
+	ses_yoneticisi.tema_degistir(clampi(skor_yoneticisi.ana_level, 1, 3))
+	oyun_aktif = true
+	oyun_duraklatildi = false
+	duraklatma_durumunu_ayarla(false, false)
+	oyun_bitti_paneli.visible = false
+	duraklat_menu.visible = false
+	duraklatma_etiketi.visible = false
+	seviye_gecis_etiketi.visible = false
+	seviye_gecis_zamanlayicisi.stop()
+	dusme_suresi = 0.0
+	kayit_yoneticisi.kaydi_sil()
+	geri_al_kaydi.clear()
+	geri_al_butonu.disabled = true
+	arayuzu_guncelle()
+	queue_redraw()
+
 func arayuzu_guncelle() -> void:
 	$Arayuz/Birak.text = "Bırak" if mobil_platform_mu() else "Bırak (Boşluk)"
 	baslik_etiketi.text = "BÖLÜM %d" % skor_yoneticisi.ana_level
@@ -298,6 +382,8 @@ func arayuzu_guncelle() -> void:
 	bolum_etiketi.text = "Bölüm: %d\n%s" % [skor_yoneticisi.ana_level, guncel_level_adi]
 	alt_seviye_etiketi.text = "Seviye: %d / %d" % [skor_yoneticisi.alt_seviye, SkorYoneticisi.ALT_SEVIYE_SAYISI]
 	satir_etiketi.text = "Hedef: %d / %d" % [skor_yoneticisi.asama_satirlari, SkorYoneticisi.ALT_SEVIYE_ICIN_SATIR]
+	$Arayuz/BilgiPaneli/Kenar/Icerik/KapsulGorevi.text = "Kapsül görevi: %d / %d" % [kapsul_gorevi_ilerleme, KAPSUL_GOREVI_HEDEFI]
+	geri_al_butonu.disabled = geri_al_kaydi.is_empty()
 	if oyun_duraklatildi:
 		durum_etiketi.text = "Oyun duraklatıldı" if kayit_uyarisi.is_empty() else "Duraklatıldı • " + kayit_uyarisi
 	elif oyun_aktif:
@@ -314,6 +400,8 @@ func yeni_oyunu_baslat() -> void:
 	# Yeniden başlatma, önceki oyunun devam kaydını kullanılamaz hale getirir.
 	if kayit_yoneticisi:
 		kayit_yoneticisi.kaydi_sil()
+	geri_al_kaydi.clear()
+	kapsul_gorevi_ilerleme = 0
 	skor_yoneticisi = SkorYoneticisi.new(yuksek_skor_kayit_yolu)
 	level_ayarini_uygula()
 	dusme_suresi = 0.0
@@ -376,7 +464,7 @@ func arayuz_stilini_uygula() -> void:
 	var normal := stil_kutusu($Arayuz/BilgiPaneli.color.darkened(0.08), tema_vurgu_rengi, 2)
 	var hover := stil_kutusu($Arayuz/BilgiPaneli.color.lightened(0.06), tema_vurgu_rengi.lightened(0.12), 2)
 	var basili := stil_kutusu($Arayuz/BilgiPaneli.color.lightened(0.12), tema_vurgu_rengi, 3)
-	for buton in [$Arayuz/Sol, $Arayuz/Dondur, $Arayuz/Sag, $Arayuz/Asagi, $Arayuz/Birak, $Arayuz/Duraklat, $Arayuz/SesToggle]:
+	for buton in [$Arayuz/Sol, $Arayuz/Dondur, $Arayuz/Sag, $Arayuz/Asagi, $Arayuz/Birak, $Arayuz/Duraklat, $Arayuz/SesToggle, $Arayuz/GeriAl]:
 		buton.add_theme_stylebox_override("normal", normal)
 		buton.add_theme_stylebox_override("hover", hover)
 		buton.add_theme_stylebox_override("pressed", basili)
@@ -453,14 +541,17 @@ func mobil_oyun_yerlesimini_uygula(zorla := false) -> void:
 	$Arayuz/SesToggle.size = Vector2(180, 96)
 	$Arayuz/SesToggle.add_theme_font_size_override("font_size", 16)
 	for veri in [
-		[$Arayuz/Sol, Vector2(60, 860)],
-		[$Arayuz/Dondur, Vector2(190, 860)],
-		[$Arayuz/Sag, Vector2(320, 860)],
-		[$Arayuz/Asagi, Vector2(450, 860)],
+		[$Arayuz/Sol, Vector2(45, 860)],
+		[$Arayuz/Dondur, Vector2(150, 860)],
+		[$Arayuz/Sag, Vector2(255, 860)],
+		[$Arayuz/Asagi, Vector2(360, 860)],
 	]:
 		var buton := veri[0] as Button
 		buton.position = veri[1]
-		buton.size = Vector2(120, 96)
+		buton.size = Vector2(90, 96)
+	$Arayuz/GeriAl.position = Vector2(520, 860)
+	$Arayuz/GeriAl.size = Vector2(180, 96)
+	$Arayuz/GeriAl.add_theme_font_size_override("font_size", 18)
 	durum_etiketi.position = Vector2(80, 74)
 	durum_etiketi.size = Vector2(560, 22)
 	durum_etiketi.add_theme_font_size_override("font_size", 13)
@@ -490,6 +581,8 @@ func _draw() -> void:
 			var yanma_rengi := yanma_rengini_al(hucre.y)
 			draw_rect(alan, yanma_rengi if yanma_rengi != Color.TRANSPARENT else (tema_tahta_rengi.darkened(0.25) if tahta.ozel_izgara_mi() else tema_tahta_rengi), true)
 			draw_rect(alan, tema_izgara_rengi, false, 1.0)
+	if aktif_parca and aktif_parca.yikim_kapsulu:
+		_yikim_kapsulu_alanini_ciz()
 	for hucre in tahta.kilitli_hucreler:
 		hucre_ciz(hucre, tahta.kilitli_hucreler[hucre])
 	if aktif_parca:
@@ -497,6 +590,22 @@ func _draw() -> void:
 			if hucre.y >= 0:
 				hucre_ciz(hucre, aktif_parca.renk, aktif_parca.yikim_kapsulu)
 	sonraki_parcayi_ciz()
+
+func _yikim_kapsulu_alanini_ciz() -> void:
+	var dusurulecek := _parcayi_kopyala(aktif_parca)
+	while true:
+		dusurulecek.konum.y += 1
+		if not tahta.gecerli_mi(dusurulecek):
+			dusurulecek.konum.y -= 1
+			break
+	var tahmin := tahta.yikim_kapsulu_etkisini_al(dusurulecek)
+	for hucre in tahmin.hucreler:
+		var alan := Rect2(tahta_konumu() + Vector2(hucre) * guncel_blok_boyutu(), Vector2.ONE * guncel_blok_boyutu())
+		var gosterge_alani := alan.grow(-3.0 * _yerlesim_olcegi)
+		draw_rect(gosterge_alani, Color(1.0, 0.34, 0.18, 0.2), true)
+		draw_rect(gosterge_alani, Color("ff8a50"), false, 1.5 * _yerlesim_olcegi)
+		draw_line(gosterge_alani.position + Vector2(5, 5) * _yerlesim_olcegi, gosterge_alani.end - Vector2(5, 5) * _yerlesim_olcegi, Color("ff9c69"), _yerlesim_olcegi)
+		draw_line(Vector2(gosterge_alani.end.x, gosterge_alani.position.y) + Vector2(-5, 5) * _yerlesim_olcegi, Vector2(gosterge_alani.position.x, gosterge_alani.end.y) + Vector2(5, -5) * _yerlesim_olcegi, Color("ff9c69"), _yerlesim_olcegi)
 
 func hucre_ciz(hucre: Vector2i, renk: Color, kapsul_mu := false) -> void:
 	var alan := Rect2(tahta_konumu() + Vector2(hucre) * guncel_blok_boyutu(), Vector2.ONE * guncel_blok_boyutu())
@@ -579,7 +688,7 @@ func sonraki_onizleme_alani() -> Rect2:
 func oyunu_kaydet() -> bool:
 	if not oyun_aktif or satir_silme_animasyonu_aktif:
 		return false
-	var basarili := kayit_yoneticisi.kaydet(tahta, skor_yoneticisi, aktif_parca, sonraki_parca, dusme_araligi, parca_uretici)
+	var basarili := kayit_yoneticisi.kaydet(tahta, skor_yoneticisi, aktif_parca, sonraki_parca, dusme_araligi, parca_uretici, kapsul_gorevi_ilerleme)
 	kayit_uyarisi = "" if basarili else "Kayıt yazılamadı."
 	return basarili
 
@@ -597,6 +706,7 @@ func oyunu_yukle() -> bool:
 		var h = Vector2i(int(item.x), int(item.y))
 		tahta.kilitli_hucreler[h] = Color(item.r, item.g, item.b, item.a)
 	# Skor
+	kapsul_gorevi_ilerleme = clampi(int(data.get("kapsul_gorevi_ilerleme", 0)), 0, KAPSUL_GOREVI_HEDEFI)
 	skor_yoneticisi.skor = int(data.skor)
 	skor_yoneticisi.ana_level = int(data.ana_level)
 	skor_yoneticisi.alt_seviye = int(data.alt_seviye)
